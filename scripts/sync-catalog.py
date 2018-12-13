@@ -128,12 +128,18 @@ def sync_service_catalog(s3, artifact):
                                      + str(uuid.uuid4()) + '.yaml'
                                      )
                             if productsInFile['name'] in lst_products_name:
+                                print('Updating existing product {} in portfolio {}...'
+                                      .format(productsInFile['name'],
+                                              objfile['name']))
                                 for ids in lst_products:
                                     if ids['Name'] == productsInFile['name']:
                                         productid = ids['ProductId']
                                 s3.upload_file(product_path, bucket, s3key)
                                 create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
                             else:
+                                print('Adding new product {} to existing portfolio {}...'
+                                      .format(productsInFile['name'],
+                                              objfile['name']))
                                 s3.upload_file(product_path, bucket, s3key)
                                 create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
                     else:
