@@ -10,17 +10,18 @@ products:
   template: product-sample-dynamodb.yaml
   owner: niall@sevenmachines.org
   description: creates a sample dynamodb table
-accounts:
-- identifier: dev
-  number: 082379909925
-- identifier: prod
-  number: 304287074291
-- identifier: services
-  number: 182870969818
-tags:
-- Key: keynam1
-  Value: value1
-- Key: keyname2
-  Value: value2
-principals:
-- role/Admin
+#accounts:
+#- identifier: dev
+#  number: 082379909925
+#- identifier: prod
+#  number: 304287074291
+#- identifier: services
+#  number: 182870969818
+#tags:
+#- Key: keynam1
+#  Value: value1
+#  Value: value2
+#- Key: keyname2
+#- role/Admin
+#principals:
+#- role/Admin
