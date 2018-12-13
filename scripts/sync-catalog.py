@@ -75,12 +75,15 @@ def sync_service_catalog(s3, artifact):
     """
     bucket = artifact['location']['s3Location']['bucketName']
     key = artifact['location']['s3Location']['objectKey']
-    tmp_file = '/tmp/' + str(uuid.uuid4())
+    tmp_dir = os.path.join(os.path.sep, "tmp")
+    tmp_file = os.path.join(tmp_dir, str(uuid.uuid4()))
+
     s3.download_file(bucket, key, tmp_file)
     with zipfile.ZipFile(tmp_file, 'r') as zip:
-        zip.extractall('/tmp/')
+        zip.extractall(tmp_dir)
         print('Extract Complete')
-    portfolios_path = os.path.join(tmp, portfolios)
+
+    portfolios_path = os.path.join(tmp_dir, portfolios)
     portfolios_dir = os.listdir(portfolios_path)
     for folder in portfolios_dir:
         vendor_dir = os.path.join(portfolios_dir, folder)
@@ -121,15 +124,14 @@ def sync_service_catalog(s3, artifact):
                                 for ids in lst_products:
                                     if ids['Name'] == productsInFile['name']:
                                         productid = ids['ProductId']
-                                s3.upload_file(
-                                    '/tmp/' + str(folder) + "/" + productsInFile['template'],
-                                    bucket, s3key)
+                                product_path = os.path.join(vendor_dir, productsInFile['template'])
+                                s3.upload_file(product_path, bucket, s3key)
                                 create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
                             else:
                                 s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
                                     uuid.uuid4()) + '.yaml'
                                 s3.upload_file(
-                                    '/tmp/' + str(folder) + "/" + productsInFile['template'],
+                                    product_path,
                                     bucket,
                                     s3key)
                                 create_product(productsInFile, portfolio_id, bucket + "/" + s3key)
@@ -141,9 +143,8 @@ def sync_service_catalog(s3, artifact):
                         for productsInFile in objfile['products']:
                             s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
                                 uuid.uuid4()) + '.yaml'
-                            s3.upload_file(
-                                '/tmp/' + str(folder) + "/" + productsInFile['template'], bucket,
-                                s3key)
+                            product_path = os.path.join(vendor_dir, productsInFile['template'])
+                            s3.upload_file(product_path, bucket, s3key)
                             create_product(productsInFile, portfolioid, bucket + "/" + s3key)
 
 
