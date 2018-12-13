@@ -182,8 +182,8 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
+    objAccounts = []
     if 'accounts' in describe_portfolio:
-        objAccounts = []
         for account in objMappingFile['accounts']:
             if check_if_account_is_integer(account['number']) and str(account['number']) != accountid:
                 objAccounts.append(str(account['number']))
