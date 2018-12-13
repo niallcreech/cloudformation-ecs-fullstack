@@ -84,9 +84,9 @@ def sync_service_catalog(s3, artifact):
         print('Extract Complete')
 
     portfolios_path = os.path.join(tmp_dir, 'portfolios')
-    portfolios_dir = os.listdir(portfolios_path)
-    for folder in portfolios_dir:
-        vendor_dir = os.path.join(portfolios_dir, folder)
+    portfolios_dirs = os.listdir(portfolios_path)
+    for folder in portfolios_dirs:
+        vendor_dir = os.path.join(portfolios_path, folder)
         if os.path.isdir(vendor_dir):
             print('Found ' + folder + ' as folder')
             for mappingfile in os.listdir(vendor_dir):
