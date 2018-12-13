@@ -530,6 +530,8 @@ def put_bucket_policy(policy, s3bucket):
     :return: None
     """
     s3_client = boto3.client('s3')
+    print("DEBUG: Bucket={}".format(s3bucket))
+    print("DEBUG: Policy={}".format(policy))
     s3_client.put_bucket_policy(
         Bucket=s3bucket,
         Policy=policy
