@@ -118,13 +118,13 @@ def sync_service_catalog(s3, artifact):
                         for products in lst_products:
                             lst_products_name.append(products['Name'])
                         for productsInFile in objfile['products']:
+                            product_path = os.path.join(vendor_dir, productsInFile['template'])
                             if productsInFile['name'] in lst_products_name:
                                 s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
                                     uuid.uuid4()) + '.yaml'
                                 for ids in lst_products:
                                     if ids['Name'] == productsInFile['name']:
                                         productid = ids['ProductId']
-                                product_path = os.path.join(vendor_dir, productsInFile['template'])
                                 s3.upload_file(product_path, bucket, s3key)
                                 create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
                             else:
