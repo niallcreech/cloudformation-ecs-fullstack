@@ -162,7 +162,11 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
     """
     describe_portfolio = client.describe_portfolio(Id=objPortfolio['Id'])
     objTags = []
-    for tag in describe_portfolio['Tags']:
+    try:
+        config_tags = describe_portfolio['Tags']
+    except KeyError:
+        config_tags = []
+    for tag in config_tags:
         if tag['Key'] not in objTags:
             objTags.append(tag['Key'])
 
