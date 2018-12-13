@@ -166,7 +166,7 @@ def update_portfolio(portfolio_obj, mapping_obj, bucket):
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
-    statements = _append_accounts_to_statements(statements, mapping_obj)
+    statements, accounts_obj = _append_accounts_to_statements(statements, mapping_obj)
     policy['Statement'] = statements
     put_bucket_policy(json.dumps(policy), bucket)
     share_portfolio(accounts_obj, portfolio_obj['Id'])
@@ -361,7 +361,7 @@ def create_portfolio(mapping_obj, bucket):
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
-    statements = _append_accounts_to_statements(statements, mapping_obj)
+    statements, accounts_obj = _append_accounts_to_statements(statements, mapping_obj)
     policy['Statement'] = statements
     put_bucket_policy(json.dumps(policy), bucket)
     share_portfolio(accounts_obj, response['PortfolioDetail']['Id'])
@@ -377,7 +377,7 @@ def _append_accounts_to_statements(statements, mapping_obj):
         accounts_to_add = get_accounts_to_append(statements, accounts_obj, bucket)
         if accounts_to_add:
             statements.append(create_policy(accounts_to_add, bucket))
-    return statements
+    return statements, accounts_obj
 
 def remove_portfolio_share(lst_accounts, portfolio_id):
     """ Removes the portfolio share
