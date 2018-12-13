@@ -1,0 +1,12 @@
+global:
+  govcloud: false
+  marketplace-ami: false
+  owner: quickstart-eng@amazon.com
+  qsname: quickstart-compliance-uk-official
+  regions:
+  - eu-west-2
+  reporting: true
+tests:
+  defaults:
+    parameter_input: defaults.json
+    template_file: main.template
