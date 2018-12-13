@@ -80,70 +80,71 @@ def sync_service_catalog(s3, artifact):
     with zipfile.ZipFile(tmp_file, 'r') as zip:
         zip.extractall('/tmp/')
         print('Extract Complete')
-    for folder in os.listdir('/tmp'):
-        print('Checking object = ' + folder)
-        if os.path.isdir("/tmp/" + folder):
+    portfolios_path = os.path.join(tmp, portfolios)
+    portfolios_dir = os.listdir(portfolios_path)
+    for folder in portfolios_dir:
+        vendor_dir = os.path.join(portfolios_dir, folder)
+        if os.path.isdir(vendor_dir):
             print('Found ' + folder + ' as folder')
-            if str(folder).startswith('portfolio-'):
-                print('Found ' + folder + ' as folder starting with portfolio')
-                for mappingfile in os.listdir("/tmp/" + folder):
-                    print('Found ' + mappingfile + ' inside folder ' + folder)
-                    if str(mappingfile).endswith('mapping.yaml'):
-                        print('Working with ' + mappingfile + ' inside folder ' + folder)
-                        with open(("/tmp/" + str(folder) + "/" + str(mappingfile)), 'r') as stream:
-                            objfile = yaml.load(stream)
-                        # objfile = json.loads("/tmp/"+folder+"/"+mappingfile)
-                        print('Loaded JSON=' + str(objfile))
-                        lst_portfolio = list_portfolios()
-                        lst_portfolio_name = []
-                        obj_portfolio = {}
-                        for portfolio in lst_portfolio:
-                            if portfolio['DisplayName'] not in lst_portfolio_name:
-                                lst_portfolio_name.append(portfolio['DisplayName'])
-                        if objfile['name'] in lst_portfolio_name:
-                            print('PORTFOLIO Match found.Checking Products now.')
-                            for item in lst_portfolio:
-                                if item['DisplayName'] == objfile['name']:
-                                    portfolio_id = item['Id']
-                                    obj_portfolio = item
-                            update_portfolio(obj_portfolio, objfile, bucket)
-                            remove_principal_with_portfolio(obj_portfolio['Id'])
-                            associate_principal_with_portfolio(obj_portfolio, objfile)
-                            lst_products = list_products_for_portfolio(portfolio_id)
-                            lst_products_name = []
-                            for products in lst_products:
-                                lst_products_name.append(products['Name'])
-                            for productsInFile in objfile['products']:
-                                if productsInFile['name'] in lst_products_name:
-                                    s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
-                                        uuid.uuid4()) + '.yaml'
-                                    for ids in lst_products:
-                                        if ids['Name'] == productsInFile['name']:
-                                            productid = ids['ProductId']
-                                    s3.upload_file(
-                                        '/tmp/' + str(folder) + "/" + productsInFile['template'],
-                                        bucket, s3key)
-                                    create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
-                                else:
-                                    s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
-                                        uuid.uuid4()) + '.yaml'
-                                    s3.upload_file(
-                                        '/tmp/' + str(folder) + "/" + productsInFile['template'],
-                                        bucket,
-                                        s3key)
-                                    create_product(productsInFile, portfolio_id, bucket + "/" + s3key)
-                        else:
-                            print('NO PORTFOLIO Match found.Creating one...')
-                            create_portfolio_response = create_portfolio(objfile, bucket)
-                            portfolioid = create_portfolio_response['PortfolioDetail']['Id']
-                            associate_principal_with_portfolio(create_portfolio_response['PortfolioDetail'], objfile)
-                            for productsInFile in objfile['products']:
+            for mappingfile in os.listdir(vendor_dir):
+                print('Found ' + mappingfile + ' inside folder ' + folder)
+                if str(mappingfile).endswith('mapping.yaml'):
+                    print('Working with ' + mappingfile + ' inside folder ' + folder)
+                    mapping_path = os.path.join(vendor_dir, mappingfile) 
+                    with open(mapping_path, 'r') as stream:
+                        objfile = yaml.load(stream)
+                    # objfile = json.loads("/tmp/"+folder+"/"+mappingfile)
+                    print('Loaded JSON=' + str(objfile))
+                    lst_portfolio = list_portfolios()
+                    lst_portfolio_name = []
+                    obj_portfolio = {}
+                    for portfolio in lst_portfolio:
+                        if portfolio['DisplayName'] not in lst_portfolio_name:
+                            lst_portfolio_name.append(portfolio['DisplayName'])
+                    if objfile['name'] in lst_portfolio_name:
+                        print('PORTFOLIO Match found.Checking Products now.')
+                        for item in lst_portfolio:
+                            if item['DisplayName'] == objfile['name']:
+                                portfolio_id = item['Id']
+                                obj_portfolio = item
+                        update_portfolio(obj_portfolio, objfile, bucket)
+                        remove_principal_with_portfolio(obj_portfolio['Id'])
+                        associate_principal_with_portfolio(obj_portfolio, objfile)
+                        lst_products = list_products_for_portfolio(portfolio_id)
+                        lst_products_name = []
+                        for products in lst_products:
+                            lst_products_name.append(products['Name'])
+                        for productsInFile in objfile['products']:
+                            if productsInFile['name'] in lst_products_name:
+                                s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
+                                    uuid.uuid4()) + '.yaml'
+                                for ids in lst_products:
+                                    if ids['Name'] == productsInFile['name']:
+                                        productid = ids['ProductId']
+                                s3.upload_file(
+                                    '/tmp/' + str(folder) + "/" + productsInFile['template'],
+                                    bucket, s3key)
+                                create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
+                            else:
                                 s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
                                     uuid.uuid4()) + '.yaml'
                                 s3.upload_file(
-                                    '/tmp/' + str(folder) + "/" + productsInFile['template'], bucket,
+                                    '/tmp/' + str(folder) + "/" + productsInFile['template'],
+                                    bucket,
                                     s3key)
-                                create_product(productsInFile, portfolioid, bucket + "/" + s3key)
+                                create_product(productsInFile, portfolio_id, bucket + "/" + s3key)
+                    else:
+                        print('NO PORTFOLIO Match found.Creating one...')
+                        create_portfolio_response = create_portfolio(objfile, bucket)
+                        portfolioid = create_portfolio_response['PortfolioDetail']['Id']
+                        associate_principal_with_portfolio(create_portfolio_response['PortfolioDetail'], objfile)
+                        for productsInFile in objfile['products']:
+                            s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
+                                uuid.uuid4()) + '.yaml'
+                            s3.upload_file(
+                                '/tmp/' + str(folder) + "/" + productsInFile['template'], bucket,
+                                s3key)
+                            create_product(productsInFile, portfolioid, bucket + "/" + s3key)
 
 
 def update_portfolio(objPortfolio, objMappingFile, bucket):
