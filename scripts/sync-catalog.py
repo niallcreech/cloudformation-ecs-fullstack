@@ -184,15 +184,7 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
-    objAccounts = []
-    if 'accounts' in describe_portfolio:
-        for account in objMappingFile['accounts']:
-            if check_if_account_is_integer(account['number']) and str(account['number']) != accountid:
-                objAccounts.append(str(account['number']))
-        accounts_to_add = get_accounts_to_append(statements, objAccounts, bucket)
-
-        if accounts_to_add:
-            statements.append(create_policy(accounts_to_add, bucket))
+    statements = _append_accounts_to_statements(statements, objMappingFile)
     policy['Statement'] = statements
     put_bucket_policy(json.dumps(policy), bucket)
     share_portfolio(objAccounts, objPortfolio['Id'])
@@ -348,30 +340,42 @@ def create_portfolio(objMappingFile, bucket):
     :return: Response of Create portfolio share API call
     """
     client = boto3.client('servicecatalog')
-    response = client.create_portfolio(
-        DisplayName=objMappingFile['name'],
-        Description=objMappingFile['description'],
-        ProviderName=objMappingFile['owner'],
-        IdempotencyToken=str(uuid.uuid4()),
-        Tags=objMappingFile['tags']
-    )
+    if 'tags' in objMappingFile:
+        response = client.create_portfolio(
+            DisplayName=objMappingFile['name'],
+            Description=objMappingFile['description'],
+            ProviderName=objMappingFile['owner'],
+            IdempotencyToken=str(uuid.uuid4()),
+            Tags=objMappingFile['tags']
+        )
+    else:
+        response = client.create_portfolio(
+            DisplayName=objMappingFile['name'],
+            Description=objMappingFile['description'],
+            ProviderName=objMappingFile['owner'],
+            IdempotencyToken=str(uuid.uuid4())
+        )
 
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
-    objAccounts = []
-    for account in objMappingFile['accounts']:
-        if check_if_account_is_integer(account['number']) and str(account['number']) != accountid:
-            objAccounts.append(str(account['number']))
-    accounts_to_add = get_accounts_to_append(statements, objAccounts, bucket)
-    if accounts_to_add:
-        statements.append(create_policy(accounts_to_add, bucket))
+    statements = _append_accounts_to_statements(statements, objMappingFile)
     policy['Statement'] = statements
     put_bucket_policy(json.dumps(policy), bucket)
     share_portfolio(objAccounts, response['PortfolioDetail']['Id'])
     remove_portfolio_share(objAccounts, response['PortfolioDetail']['Id'])
     return response
 
+def _append_accounts_to_statements(statements, objMappingFile):
+    if 'accounts' in objMappingFile:
+        objAccounts = []
+        for account in objMappingFile['accounts']:
+            if check_if_account_is_integer(account['number']) and str(account['number']) != accountid:
+                objAccounts.append(str(account['number']))
+        accounts_to_add = get_accounts_to_append(statements, objAccounts, bucket)
+        if accounts_to_add:
+            statements.append(create_policy(accounts_to_add, bucket))
+    return statements
 
 def remove_portfolio_share(lst_accounts, portfolioid):
     """ Removes the portfolio share
