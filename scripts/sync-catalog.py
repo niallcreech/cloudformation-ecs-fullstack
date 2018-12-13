@@ -108,12 +108,12 @@ def sync_service_catalog(s3, artifact):
                         print('PORTFOLIO Match found.Checking Products now.')
                         for item in lst_portfolio:
                             if item['DisplayName'] == objfile['name']:
-                                portfolio_id = item['Id']
+                                PortfolioId = item['Id']
                                 obj_portfolio = item
                         update_portfolio(obj_portfolio, objfile, bucket)
                         remove_principal_with_portfolio(obj_portfolio['Id'])
                         associate_principal_with_portfolio(obj_portfolio, objfile)
-                        lst_products = list_products_for_portfolio(portfolio_id)
+                        lst_products = list_products_for_portfolio(PortfolioId)
                         lst_products_name = []
                         for products in lst_products:
                             lst_products_name.append(products['Name'])
@@ -134,18 +134,18 @@ def sync_service_catalog(s3, artifact):
                                     product_path,
                                     bucket,
                                     s3key)
-                                create_product(productsInFile, portfolio_id, bucket + "/" + s3key)
+                                create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
                     else:
                         print('NO PORTFOLIO Match found.Creating one...')
                         create_portfolio_response = create_portfolio(objfile, bucket)
-                        portfolio_id = create_portfolio_response['PortfolioDetail']['Id']
+                        PortfolioId = create_portfolio_response['PortfolioDetail']['Id']
                         associate_principal_with_portfolio(create_portfolio_response['PortfolioDetail'], objfile)
                         for productsInFile in objfile['products']:
                             s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
                                 uuid.uuid4()) + '.yaml'
                             product_path = os.path.join(vendor_dir, productsInFile['template'])
                             s3.upload_file(product_path, bucket, s3key)
-                            create_product(productsInFile, portfolio_id, bucket + "/" + s3key)
+                            create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
 
 
 def update_portfolio(portfolio_obj, mapping_obj, bucket):
@@ -162,7 +162,7 @@ def update_portfolio(portfolio_obj, mapping_obj, bucket):
     :param bucket: S3 Bucket
     :return: 
     """
-    _update_portfolio_tags(portfolio_id=portfolio_obj['Id'], mapping_obj=mapping_obj)
+    _update_portfolio_tags(id=portfolio_obj['Id'], mapping_obj=mapping_obj)
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
@@ -172,8 +172,8 @@ def update_portfolio(portfolio_obj, mapping_obj, bucket):
     share_portfolio(accounts_obj, portfolio_obj['Id'])
     remove_portfolio_share(accounts_obj, portfolio_obj['Id'])
 
-def _update_portfolio_tags(portfolio_id, mapping_obj):
-    describe_portfolio = client.describe_portfolio(Id=portfolio_id)
+def _update_portfolio_tags(PortfolioId, mapping_obj):
+    describe_portfolio = client.describe_portfolio(Id=PortfolioId)
     
     obj_tags = []
     if 'Tags' in describe_portfolio:
@@ -182,13 +182,13 @@ def _update_portfolio_tags(portfolio_id, mapping_obj):
                 obj_tags.append(tag['Key'])
     if 'Tags' in mapping_obj:
         client.update_portfolio(
-            Id=portfolio_id,
+            Id=PortfolioId,
             Description=mapping_obj['description'],
             ProviderName=mapping_obj['owner'],
             RemoveTags=obj_tags
         )
         client.update_portfolio(
-            Id=portfolio_id['Id'],
+            Id=PortfolioId,
             AddTags=mapping_obj['tags']
         )
         return True
@@ -203,7 +203,7 @@ def associate_principal_with_portfolio(portfolio_obj, mapping_obj):
     if 'principals' in mapping_obj:
         for principalarn in mapping_obj['principals']:
             client.associate_principal_with_portfolio(
-                portfolio_id=portfolio_obj['Id'],
+                PortfolioId=portfolio_obj['Id'],
                 PrincipalARN="arn:aws:iam::"+accountid+":"+str(principalarn),
                 PrincipalType='IAM'
             )
@@ -218,11 +218,11 @@ def remove_principal_with_portfolio(id):
     """
 
     list_principals = client.list_principals_for_portfolio(
-        portfolio_id=id
+        PortfolioId=id
     )
     for principal in list_principals['Principals']:
         client.disassociate_principal_from_portfolio(
-            portfolio_id=id,
+            PortfolioId=id,
             PrincipalARN=principal['PrincipalARN']
         )
 
@@ -265,9 +265,9 @@ def list_products_for_portfolio(id):
 
     while not done:
         if nextmarker:
-            product_response = client.search_products_as_admin(nextmarker=nextmarker, portfolio_id=id)
+            product_response = client.search_products_as_admin(nextmarker=nextmarker, PortfolioId=id)
         else:
-            product_response = client.search_products_as_admin(portfolio_id=id)
+            product_response = client.search_products_as_admin(PortfolioId=id)
 
         for product in product_response['ProductViewDetails']:
             lst_products.append(product['ProductViewSummary'])
@@ -279,11 +279,11 @@ def list_products_for_portfolio(id):
     return lst_products
 
 
-def create_product(objProduct, portfolio_id, s3objectkey):
+def create_product(objProduct, PortfolioId, s3objectkey):
     """
     
     :param objProduct: Product object to be created. has all the mandatory details for product creation
-    :param portfolio_id: Portfolio ID with which the newly created product would be associated with
+    :param PortfolioId: Portfolio ID with which the newly created product would be associated with
     :param s3objectkey: S3Object Key, which has the cloudformation template for the product
     :return: None
     """
@@ -307,7 +307,7 @@ def create_product(objProduct, portfolio_id, s3objectkey):
 
     response = client.associate_product_with_portfolio(
         ProductId=create_product_response['ProductViewDetail']['ProductViewSummary']['ProductId'],
-        portfolio_id=portfolio_id
+        PortfolioId=PortfolioId
     )
 
 
@@ -379,30 +379,30 @@ def _append_accounts_to_statements(statements, mapping_obj):
             statements.append(create_policy(accounts_to_add, bucket))
     return statements, accounts_obj
 
-def remove_portfolio_share(lst_accounts, portfolio_id):
+def remove_portfolio_share(lst_accounts, PortfolioId):
     """ Removes the portfolio share
     :param lst_accounts: list of accounts to remove
-    :param portfolio_id: portfolio id from which to remove the share
+    :param PortfolioId: portfolio id from which to remove the share
     :return: None
     """
-    lst_privledged_accounts = list_portfolio_shares(portfolio_id)
+    lst_privledged_accounts = list_portfolio_shares(PortfolioId)
     for account in lst_privledged_accounts:
         if account not in lst_accounts:
             client.delete_portfolio_share(
-                portfolio_id=portfolio_id,
+                PortfolioId=PortfolioId,
                 AccountId=account
             )
     if not lst_privledged_accounts:
         for account in lst_accounts:
             client.delete_portfolio_share(
-                portfolio_id=portfolio_id,
+                PortfolioId=PortfolioId,
                 AccountId=account
             )
 
 
-def list_portfolio_shares(portfolio_id):
+def list_portfolio_shares(PortfolioId):
     """ Lists the shares for the specified portfolio
-    :param portfolio_id: portfolio id to list the shares
+    :param PortfolioId: portfolio id to list the shares
     :return: List of accounts with which the portfolio is already shared with
     """
     nextmarker = None
@@ -412,9 +412,9 @@ def list_portfolio_shares(portfolio_id):
 
     while not done:
         if nextmarker:
-            lst_portfolio_access = client.list_portfolio_access(nextmarker=nextmarker, portfolio_id=portfolio_id)
+            lst_portfolio_access = client.list_portfolio_access(nextmarker=nextmarker, PortfolioId=PortfolioId)
         else:
-            lst_portfolio_access = client.list_portfolio_access(portfolio_id=portfolio_id)
+            lst_portfolio_access = client.list_portfolio_access(PortfolioId=PortfolioId)
 
         for accounts in lst_portfolio_access['AccountIds']:
             lst_privledged_accounts.append(accounts)
@@ -427,18 +427,18 @@ def list_portfolio_shares(portfolio_id):
     return lst_privledged_accounts
 
 
-def share_portfolio(lst_accounts, portfolio_id):
+def share_portfolio(lst_accounts, PortfolioId):
     """ Shares the portfolio with the specified account ids
     :param lst_accounts: list of accounts to share the portfolio with
-    :param portfolio_id: portfolio id
+    :param PortfolioId: portfolio id
     :return: None
     """
-    lst_privledged_accounts = list_portfolio_shares(portfolio_id)
+    lst_privledged_accounts = list_portfolio_shares(PortfolioId)
     if lst_accounts:
         for account in lst_accounts:
             if account not in lst_privledged_accounts:
                 client.create_portfolio_share(
-                    portfolio_id=portfolio_id,
+                    PortfolioId=PortfolioId,
                     AccountId=str(account)
                 )
 
