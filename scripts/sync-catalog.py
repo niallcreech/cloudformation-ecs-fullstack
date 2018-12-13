@@ -161,8 +161,9 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
     :return: 
     """
     describe_portfolio = client.describe_portfolio(Id=objPortfolio['Id'])
+    
+    objTags = []
     if 'Tags' in describe_portfolio:
-        objTags = []
         for tag in describe_portfolio['Tags']:
             if tag['Key'] not in objTags:
                 objTags.append(tag['Key'])
@@ -173,6 +174,7 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
             ProviderName=objMappingFile['owner'],
             RemoveTags=objTags
         )
+    if 'Tags' in objMappingFile:
         client.update_portfolio(
             Id=objPortfolio['Id'],
             AddTags=objMappingFile['tags']
