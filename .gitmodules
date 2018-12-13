@@ -1,3 +1,6 @@
 [submodule "portfolios/vendor/aws/quickstart-compliance-common"]
 	path = portfolios/vendor/aws/quickstart-compliance-common
 	url = https://github.com/aws-quickstart/quickstart-compliance-common.git
+[submodule "portfolios/aws/quickstart-compliance-uk-official"]
+	path = portfolios/aws/quickstart-compliance-uk-official
+	url = https://github.com/aws-quickstart/quickstart-compliance-uk-official.git

@@ -1,0 +1,9 @@
+name: quickstarts
+description: AWS quickstarts
+owner: niall@sevenmachines.org
+vendor: aws
+products:
+- name: quickstart-compliance-uk-official
+  template: quickstart-compliance-uk-official/templates/main.template
+  owner: niall@sevenmachines.org
+  description: creates an official uk compliance vpc and all related components
