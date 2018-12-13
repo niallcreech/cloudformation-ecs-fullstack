@@ -15,9 +15,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: pipeline to service catalog
 Parameters:
+  RepositoryOwner:
+    Description: Name of the GitHub user or org who owns the repository.
+    Type: String
   RepositoryName:
-    Description: >
-      Name of the AWS CodeCommit that you wish to create, where you can push the code related to Service Catalog
+    Description: The GitHub repo name.
+    Type: String
+  BranchName:
+    Description: Name of repo branch to watch.
     Type: String
 Resources:
   ServiceCatalogRepo:
@@ -226,15 +231,18 @@ Resources:
       Stages:
         - Name: source-code-checkout
           Actions:
-            - Name: App
+            - Name: Source
+              RunOrder: 1
               ActionTypeId:
-                Category: Source
-                Owner: AWS
                 Version: 1
-                Provider: CodeCommit
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
               Configuration:
-                RepositoryName: !GetAtt ServiceCatalogRepo.Name
-                BranchName: master
+                Owner: !Ref RepositoryOwner
+                Repo: !Ref RepositoryName
+                Branch: !Ref BranchName
+                OAuthToken: "{{resolve:secretsmanager:external/github/users/code-pipeline/key}}"
               OutputArtifacts:
                 - Name: SCCheckoutArtifact
               RunOrder: 1
