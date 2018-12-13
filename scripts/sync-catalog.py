@@ -163,12 +163,11 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
     describe_portfolio = client.describe_portfolio(Id=objPortfolio['Id'])
     objTags = []
     try:
-        config_tags = describe_portfolio['Tags']
+        for tag in describe_portfolio['Tags']:
+            if tag['Key'] not in objTags:
+                objTags.append(tag['Key'])
     except KeyError:
-        config_tags = []
-    for tag in config_tags:
-        if tag['Key'] not in objTags:
-            objTags.append(tag['Key'])
+        pass
 
     client.update_portfolio(
         Id=objPortfolio['Id'],
@@ -176,10 +175,15 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
         ProviderName=objMappingFile['owner'],
         RemoveTags=objTags
     )
-    client.update_portfolio(
-        Id=objPortfolio['Id'],
-        AddTags=objMappingFile['tags']
-    )
+    if len(objTags) > 0:
+        client.update_portfolio(
+            Id=objPortfolio['Id'],
+            AddTags=objMappingFile['tags']
+        )
+    else:
+        client.update_portfolio(
+            Id=objPortfolio['Id']
+        )
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
