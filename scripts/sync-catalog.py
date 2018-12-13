@@ -162,7 +162,7 @@ def update_portfolio(portfolio_obj, mapping_obj, bucket):
     :param bucket: S3 Bucket
     :return: 
     """
-    _update_portfolio_tags(id=portfolio_obj['Id'], mapping_obj=mapping_obj)
+    _update_portfolio_tags(PortfolioId=portfolio_obj['Id'], mapping_obj=mapping_obj)
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
