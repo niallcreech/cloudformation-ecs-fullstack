@@ -25,12 +25,6 @@ Parameters:
     Description: Name of repo branch to watch.
     Type: String
 Resources:
-  ServiceCatalogRepo:
-    Type: AWS::CodeCommit::Repository
-    DeletionPolicy: Retain
-    Properties:
-      RepositoryDescription: Holds Service Catalog code
-      RepositoryName: !Ref RepositoryName
   ArtifactBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -60,11 +54,6 @@ Resources:
                   - codepipeline:*
                   - iam:ListRoles
                   - cloudformation:*
-                  - codecommit:List*
-                  - codecommit:Get*
-                  - codecommit:GitPull
-                  - codecommit:UploadArchive
-                  - codecommit:CancelUploadArchive
                   - codebuild:BatchGetBuilds
                   - codebuild:StartBuild
                   - iam:PassRole
@@ -303,9 +292,3 @@ Outputs:
   ArtifactBucket:
     Description: ArtifactBucket to be Used
     Value: !Ref ArtifactBucket
-  RepositoryHttpUrl:
-    Description: CodeCommit Repository HTTP URL to push Service Catalog Related Artifacts
-    Value: !GetAtt ServiceCatalogRepo.CloneUrlHttp
-  RepositorySSHUrl:
-    Description: CodeCommit Repository SSH URL to push Service Catalog Related Artifacts
-    Value: !GetAtt ServiceCatalogRepo.CloneUrlSsh
