@@ -1,13 +1,14 @@
 name: base
 description: Foundation templates
 owner: niall@sevenmachines.org
+vendor: sevenmachines.org
 products:
 - name: standard-vpc
-  template: networking/vpc.yaml
+  template: templates/vpc.template
   owner: niall@sevenmachines.org
   description: creates a vpc and all related components
 - name: dynamodb-table
-  template: storage/dynamodb.yaml
+  template: templates/dynamodb.template
   owner: niall@sevenmachines.org
   description: creates a sample dynamodb table
 #accounts:

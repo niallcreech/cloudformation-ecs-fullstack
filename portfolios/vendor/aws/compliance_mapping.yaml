@@ -1,0 +1,30 @@
+name: compliance
+description: AWS compliance common templates
+owner: niall@sevenmachines.org
+vendor: aws
+products:
+- name: config-rules
+  template: quickstart-compliance-common/templates/config-rules.template
+  owner: niall@sevenmachines.org
+  description: creates a vpc and all related components
+- name: logging
+  template: quickstart-compliance-common/templates/logging.template
+  owner: niall@sevenmachines.org
+  description: creates a sample dynamodb table
+  description: creates a sample dynamodb table
+- name: vpc-management
+  template: quickstart-compliance-common/templates/vpc-management.template
+  owner: niall@sevenmachines.org
+  description: creates a sample dynamodb table
+- name: iam
+  template: quickstart-compliance-common/templates/iam.template
+  owner: niall@sevenmachines.org
+  description: creates a sample dynamodb table
+- name: nat-instance
+  template: quickstart-compliance-common/templates/nat-instance.template
+  owner: niall@sevenmachines.org
+  description: creates a sample dynamodb table
+- name: vpc-production
+  template: quickstart-compliance-common/templates/vpc-production.template
+  owner: niall@sevenmachines.org
+  description: creates a sample dynamodb table
