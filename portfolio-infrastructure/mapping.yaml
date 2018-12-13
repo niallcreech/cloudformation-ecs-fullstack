@@ -1,20 +1,22 @@
-name: NAME_OF_THE_PORTFOLIO
-description: DESCRIPTION_OF_THE_PORTFOLIO
-owner: EMAIL@EXAMPLE.COM
+name: base
+description: Foundation templates
+owner: niall@sevenmachines.org
 products:
-- name: vpc-product
+- name: standard-vpc
   template: product-vpc.yaml
-  owner: EMAIL@EXAMPLE.COM
+  owner: niall@sevenmachines.org
   description: creates a vpc and all related components
-- name: sample-dynamodb
+- name: dynamodb-table
   template: product-sample-dynamodb.yaml
-  owner: EMAIL@EXAMPLE.COM
+  owner: niall@sevenmachines.org
   description: creates a sample dynamodb table
 accounts:
-- identifier: Sample AWS Account
-  number: 123456789012
-- identifier: Another
-  number: 123456789013
+- identifier: dev
+  number: 082379909925
+- identifier: prod
+  number: 304287074291
+- identifier: services
+  number: 182870969818
 tags:
 - Key: keynam1
   Value: value1
