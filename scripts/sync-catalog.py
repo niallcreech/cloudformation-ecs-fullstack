@@ -119,21 +119,22 @@ def sync_service_catalog(s3, artifact):
                             lst_products_name.append(products['Name'])
                         for productsInFile in objfile['products']:
                             product_path = os.path.join(vendor_dir, productsInFile['template'])
+                            mapping_name = str(mappingfile).split(".yaml")[0]
+                            s3key = ('sc-templates/'
+                                     + vendor_dir
+                                     + mapping_name
+                                     + productsInFile['name']
+                                     + '/templates/'
+                                     + str(uuid.uuid4()) + '.yaml'
+                                     )
                             if productsInFile['name'] in lst_products_name:
-                                s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
-                                    uuid.uuid4()) + '.yaml'
                                 for ids in lst_products:
                                     if ids['Name'] == productsInFile['name']:
                                         productid = ids['ProductId']
                                 s3.upload_file(product_path, bucket, s3key)
                                 create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
                             else:
-                                s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
-                                    uuid.uuid4()) + '.yaml'
-                                s3.upload_file(
-                                    product_path,
-                                    bucket,
-                                    s3key)
+                                s3.upload_file(product_path, bucket, s3key)
                                 create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
                     else:
                         print('NO PORTFOLIO Match found.Creating one...')
@@ -141,8 +142,13 @@ def sync_service_catalog(s3, artifact):
                         PortfolioId = create_portfolio_response['PortfolioDetail']['Id']
                         associate_principal_with_portfolio(create_portfolio_response['PortfolioDetail'], objfile)
                         for productsInFile in objfile['products']:
-                            s3key = 'sc-templates/' + productsInFile['name'] + '/templates/' + str(
-                                uuid.uuid4()) + '.yaml'
+                            s3key = ('sc-templates/'
+                                     + vendor_dir
+                                     + mapping_name
+                                     + productsInFile['name']
+                                     + '/templates/'
+                                     + str(uuid.uuid4()) + '.yaml'
+                                     )
                             product_path = os.path.join(vendor_dir, productsInFile['template'])
                             s3.upload_file(product_path, bucket, s3key)
                             create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
