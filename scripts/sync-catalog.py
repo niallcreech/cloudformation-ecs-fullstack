@@ -75,7 +75,7 @@ def sync_service_catalog(s3, artifact):
     """
     bucket = artifact['location']['s3Location']['bucketName']
     key = artifact['location']['s3Location']['objectKey']
-    tmp_dir = os.path.join(os.path.sep, "tmp")
+    tmp_dir = os.path.join(os.path.sep, 'tmp')
     tmp_file = os.path.join(tmp_dir, str(uuid.uuid4()))
 
     s3.download_file(bucket, key, tmp_file)
@@ -83,7 +83,7 @@ def sync_service_catalog(s3, artifact):
         zip.extractall(tmp_dir)
         print('Extract Complete')
 
-    portfolios_path = os.path.join(tmp_dir, portfolios)
+    portfolios_path = os.path.join(tmp_dir, 'portfolios')
     portfolios_dir = os.listdir(portfolios_path)
     for folder in portfolios_dir:
         vendor_dir = os.path.join(portfolios_dir, folder)
