@@ -161,43 +161,34 @@ def update_portfolio(objPortfolio, objMappingFile, bucket):
     :return: 
     """
     describe_portfolio = client.describe_portfolio(Id=objPortfolio['Id'])
-    objTags = []
-    try:
+    if 'Tags' in describe_portfolio:
+        objTags = []
         for tag in describe_portfolio['Tags']:
             if tag['Key'] not in objTags:
                 objTags.append(tag['Key'])
-    except KeyError:
-        pass
 
-    client.update_portfolio(
-        Id=objPortfolio['Id'],
-        Description=objMappingFile['description'],
-        ProviderName=objMappingFile['owner'],
-        RemoveTags=objTags
-    )
-    if len(objTags) > 0:
+        client.update_portfolio(
+            Id=objPortfolio['Id'],
+            Description=objMappingFile['description'],
+            ProviderName=objMappingFile['owner'],
+            RemoveTags=objTags
+        )
         client.update_portfolio(
             Id=objPortfolio['Id'],
             AddTags=objMappingFile['tags']
         )
-    else:
-        client.update_portfolio(
-            Id=objPortfolio['Id']
-        )
     bucket_policy = get_bucket_policy(bucket)
     policy = json.loads(bucket_policy['Policy'])
     statements = policy['Statement']
-    objAccounts = []
-    try:
+    if 'accounts' in describe_portfolio:
+        objAccounts = []
         for account in objMappingFile['accounts']:
             if check_if_account_is_integer(account['number']) and str(account['number']) != accountid:
                 objAccounts.append(str(account['number']))
         accounts_to_add = get_accounts_to_append(statements, objAccounts, bucket)
-    except KeyError:
-        accounts_to_add = None
 
-    if accounts_to_add:
-        statements.append(create_policy(accounts_to_add, bucket))
+        if accounts_to_add:
+            statements.append(create_policy(accounts_to_add, bucket))
     policy['Statement'] = statements
     put_bucket_policy(json.dumps(policy), bucket)
     share_portfolio(objAccounts, objPortfolio['Id'])
@@ -211,15 +202,13 @@ def associate_principal_with_portfolio(objPortfolio, objMappingFile):
     :param objMappingFile: mapping.yaml file object
     :return: None
     """
-    if len(objMappingFile['principals']) > 0:
+    if 'principals' in objMappingFile:
         for principalarn in objMappingFile['principals']:
             client.associate_principal_with_portfolio(
                 PortfolioId=objPortfolio['Id'],
                 PrincipalARN="arn:aws:iam::"+accountid+":"+str(principalarn),
                 PrincipalType='IAM'
             )
-
-
 
 def remove_principal_with_portfolio(id):
 
