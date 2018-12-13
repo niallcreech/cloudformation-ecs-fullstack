@@ -369,8 +369,8 @@ def create_portfolio(mapping_obj, bucket):
     return response
 
 def _append_accounts_to_statements(statements, mapping_obj):
+    accounts_obj = []
     if 'accounts' in mapping_obj:
-        accounts_obj = []
         for account in mapping_obj['accounts']:
             if check_if_account_is_integer(account['number']) and str(account['number']) != accountid:
                 accounts_obj.append(str(account['number']))
