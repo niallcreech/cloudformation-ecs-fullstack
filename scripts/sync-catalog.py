@@ -77,7 +77,8 @@ def sync_service_catalog(s3, artifact):
     key = artifact['location']['s3Location']['objectKey']
     tmp_dir = os.path.join(os.path.sep, 'tmp')
     tmp_file = os.path.join(tmp_dir, str(uuid.uuid4()))
-
+    print("DEBUG: Downloading {} to s3 location {}/{}"
+          .format(tmp_file, bucket, key))
     s3.download_file(bucket, key, tmp_file)
     with zipfile.ZipFile(tmp_file, 'r') as zip:
         zip.extractall(tmp_dir)
