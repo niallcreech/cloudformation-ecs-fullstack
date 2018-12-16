@@ -11,6 +11,10 @@ products:
   template: templates/dynamodb.template
   owner: niall@sevenmachines.org
   description: creates a sample dynamodb table
+- name: static-website
+  template: templates/static_website.template
+  owner: niall@sevenmachines.org
+  description: Creates a static cloudfront to s3 https website
 #accounts:
 #- identifier: dev
 #  number: 082379909925

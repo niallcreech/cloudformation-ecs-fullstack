@@ -1,0 +1,252 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a simple s3 backed cloudfront distribution with route 53
+  records. There is also the option of setting it to automatically be a 
+  maintenance site where all traffic to the site will receive a custom 503 error.
+Parameters:
+  HostedZoneName:
+    Type: String
+    Description: An existing Route 53 hosted zone.
+  DomainName:
+    Type: String
+    Description: The full domain name.
+  EnableHttps:
+    Description: Set to enable https
+    Default: true
+    Type: String
+    AllowedValues: [true, false]
+  ValidationDomain:
+    Type: String
+    Description: The validation domain for the SSL certificate
+    Default: ''
+  CertificateArn:
+    Type: String
+    Description: The certificate Arn if it exists
+    Default: ''
+  IsMaintenanceSite:
+    Description: Set as a simple maintenance page site
+    Default: false
+    Type: String
+    AllowedValues: [true, false]
+  AlternativeDomainName:
+    Description: Alternative name for this site
+    Default: ''
+    Type: String
+  AlternativeValidationDomain:
+    Description: SSL validation domain for the alternative domain name.
+    Default: ''
+    Type: String
+  RootPage:
+    Description: Set the default root page.
+    Default: index.html
+    Type: String
+  EnableHealthCheck:
+    Description: Enable a healthcheck on a site to failover to this one
+    Default: false
+    Type: String
+    AllowedValues: [true, false]
+Conditions:
+  shouldEnableMaintenanceSite:
+    !Equals [true, !Ref IsMaintenanceSite]
+  shouldEnableHealthCheckSecondary: !Equals [true, !Ref EnableHealthCheck]
+  shouldEnableHttps:
+    !Equals ['true', !Ref EnableHttps]
+  shouldCreateCertificate:
+    !And
+     - !Equals ['', !Ref CertificateArn]
+     - !Equals ['true', !Ref EnableHttps]
+  hasAlternativeDomainName:
+    !Not [!Equals ['', !Ref AlternativeDomainName]]
+  hasValidationDomain:
+    !Not [!Equals ['', !Ref ValidationDomain]]
+  hasAlternativeValidationDomain:
+    !Not [!Equals ['', !Ref AlternativeValidationDomain]]
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "Domain Configuration"
+        Parameters: 
+          - DomainName
+          - HostedZoneName
+      - 
+        Label: 
+          default: "Certificate Configuration"
+        Parameters: 
+          - ValidationDomain
+          - AlternativeDomainName
+          - AlternativeValidationDomain
+      - 
+        Label: 
+          default: "Site Configuration"
+        Parameters: 
+          - RootPage
+          - IsMaintenanceSite
+      - 
+        Label: 
+          default: "HealthCheck Configuration"
+        Parameters: 
+          - EnableHealthCheck
+          - HealthCheckDomainName
+          - HealthCheckPort
+          - HealthCheckPath
+          - HealthCheckType
+Mappings:
+  RegionMap:
+    us-east-1:
+      S3HostedZoneId: Z3AQBSTGFYJSTF
+      S3WebsiteEndpoint: s3-website-us-east-1.amazonaws.com
+    us-west-1:
+      S3HostedZoneId: Z2F56UZL2M1ACD
+      S3WebsiteEndpoint: s3-website-us-west-1.amazonaws.com
+    us-west-2:
+      S3HostedZoneId: Z3BJ6K6RIION7M
+      S3WebsiteEndpoint: s3-website-us-west-2.amazonaws.com
+    eu-west-1:
+      S3HostedZoneId: Z1BKCTXD74EZPE
+      S3WebsiteEndpoint: s3-website-eu-west-1.amazonaws.com
+    ap-southeast-1:
+      S3HostedZoneId: Z3O0J2DXBE1FTB
+      S3WebsiteEndpoint: s3-website-ap-southeast-1.amazonaws.com
+    ap-southeast-2:
+      S3HostedZoneId: Z1WCIGYICN2BYD
+      S3WebsiteEndpoint: s3-website-ap-southeast-2.amazonaws.com
+    ap-northeast-1:
+      S3HostedZoneId: Z2M4EHUR26P7ZW
+      S3WebsiteEndpoint: s3-website-ap-northeast-1.amazonaws.com
+    sa-east-1:
+      S3HostedZoneId: Z31GFT0UA1I2HV
+      S3WebsiteEndpoint: s3-website-sa-east-1.amazonaws.com
+Resources:
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref 'AWS::StackName'
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: 404.html
+    DeletionPolicy: Retain
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref 'WebsiteBucket'
+      PolicyDocument:
+        Statement:
+        - Sid: PublicReadForGetBucketObjects
+          Effect: Allow
+          Principal: '*'
+          Action: s3:GetObject
+          Resource: !Join ['', ['arn:aws:s3:::', !Ref 'WebsiteBucket', /*]]
+  WebsiteCloudfront:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+    - WebsiteBucket
+    Properties:
+      DistributionConfig:
+        Comment: Cloudfront Distribution pointing to S3 bucket origin
+        Origins:
+        - DomainName: !Join [., [ !Ref 'AWS::StackName',!FindInMap [RegionMap, !Ref 'AWS::Region',
+                S3WebsiteEndpoint]]]
+          Id: S3Origin
+          CustomOriginConfig:
+            !If
+            - shouldEnableHttps
+            - {HTTPPort: '80', HTTPSPort: '443', OriginProtocolPolicy: http-only}
+            - {HTTPPort: '80', OriginProtocolPolicy: http-only}
+        Enabled: true
+        HttpVersion: 'http2'
+        DefaultRootObject:
+          !If
+            - shouldEnableMaintenanceSite
+            - !Ref AWS::NoValue
+            - !Ref RootPage
+        CustomErrorResponses: 
+          !If
+            - shouldEnableMaintenanceSite
+            - - ErrorCode: 404
+                ResponseCode: 503
+                ResponsePagePath: !Join ['', ['/', !Ref RootPage]]
+                ErrorCachingMinTTL: 30
+            - !Ref AWS::NoValue  
+        Aliases:
+        - !Ref 'DomainName'
+        - !If
+            - hasAlternativeValidationDomain
+            - !Ref AlternativeDomainName
+            - !Ref AWS::NoValue
+        DefaultCacheBehavior:
+          AllowedMethods:
+          - GET
+          - HEAD
+          Compress: true
+          TargetOriginId: S3Origin
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: !If [shouldEnableHttps, redirect-to-https, allow-all]
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          !If
+            - shouldEnableHttps
+            - AcmCertificateArn: !If [shouldCreateCertificate, !Ref "ACMCertificate", !Ref "CertificateArn"]
+              SslSupportMethod: sni-only
+            - !Ref "AWS::NoValue"
+  WebsiteDNSName:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Join ['', [!Ref 'HostedZoneName', '.']]
+      RecordSets:
+      - Name: !Ref 'DomainName'
+        Failover: 
+          !If
+            - shouldEnableHealthCheckSecondary
+            - 'SECONDARY'
+            - !Ref 'AWS::NoValue'
+        SetIdentifier:
+          !If
+            - shouldEnableHealthCheckSecondary
+            - !Ref 'AWS::StackName'
+            - !Ref 'AWS::NoValue'
+        Type: A
+        AliasTarget:
+          HostedZoneId: Z2FDTNDATAQYW2
+          DNSName: !GetAtt [WebsiteCloudfront, DomainName]
+      - !If
+          - hasAlternativeDomainName
+          - Name: !Ref AlternativeDomainName
+            Type: A
+            AliasTarget:
+              HostedZoneId: Z2FDTNDATAQYW2
+              DNSName: !GetAtt [WebsiteCloudfront, DomainName]
+          - !Ref AWS::NoValue
+  ACMCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: shouldCreateCertificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        !If
+          - hasAlternativeDomainName
+          - - !Ref AlternativeDomainName
+          - !Ref AWS::NoValue
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          ValidationDomain: !Ref ValidationDomain
+        - !If
+            - hasAlternativeValidationDomain
+            - DomainName: !Ref AlternativeDomainName
+              ValidationDomain: !Ref AlternativeValidationDomain
+            - !Ref AWS::NoValue
+
+Outputs:
+  SiteURL:
+    Value: !Join ['', ['https://', !Ref 'DomainName']]
+    Description: Address of the website
+  BucketName:
+    Value: !Ref 'WebsiteBucket'
+    Description: Name of S3 bucket to hold website content
+  CloudfrontEndpoint:
+    Value: !GetAtt [WebsiteCloudfront, DomainName]
+    Description: Endpoint for Cloudfront distribution

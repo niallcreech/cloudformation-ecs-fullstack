@@ -77,7 +77,8 @@ def sync_service_catalog(s3, artifact):
     key = artifact['location']['s3Location']['objectKey']
     tmp_dir = os.path.join(os.path.sep, 'tmp')
     tmp_file = os.path.join(tmp_dir, str(uuid.uuid4()))
-
+    print("DEBUG: Downloading {} to s3 location {}/{}"
+          .format(tmp_file, bucket, key))
     s3.download_file(bucket, key, tmp_file)
     with zipfile.ZipFile(tmp_file, 'r') as zip:
         zip.extractall(tmp_dir)
@@ -128,12 +129,18 @@ def sync_service_catalog(s3, artifact):
                                      + str(uuid.uuid4()) + '.yaml'
                                      )
                             if productsInFile['name'] in lst_products_name:
+                                print('Updating existing product {} in portfolio {}...'
+                                      .format(productsInFile['name'],
+                                              objfile['name']))
                                 for ids in lst_products:
                                     if ids['Name'] == productsInFile['name']:
                                         productid = ids['ProductId']
                                 s3.upload_file(product_path, bucket, s3key)
                                 create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
                             else:
+                                print('Adding new product {} to existing portfolio {}...'
+                                      .format(productsInFile['name'],
+                                              objfile['name']))
                                 s3.upload_file(product_path, bucket, s3key)
                                 create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
                     else:
