@@ -1,0 +1,65 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon EKS'
+
+Parameters:
+
+  ClusterName:
+    Type: String
+    Description: Name of the cluster
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Stack Id
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: VPC subnet ids
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: VPC subnet ids
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+  NodeImageId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI id for the node instances.
+    Default: ami-0a9006fb385703b54
+  NodeInstanceType:
+    Description: EC2 instance type for the node instances
+    Type: String
+    Default: t2.small
+  NodeAutoScalingGroupMinSize:
+    Type: Number
+    Description: Minimum size of Node Group ASG.
+    Default: 1
+  NodeAutoScalingGroupMaxSize:
+    Type: Number
+    Description: Maximum size of Node Group ASG.
+    Default: 3
+
+Resources:
+  ClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./eks-cluster-group.template
+      TimeoutInMinutes: 30
+      Parameters:
+        ClusterName: !Ref ClusterName
+        VpcId: !Ref VpcId
+        PublicSubnetIds: !Join [",", !Ref PublicSubnetIds]
+        PrivateSubnetIds: !Join [",", !Ref PrivateSubnetIds]
+  PrivateNodesStack:
+    Type: AWS::CloudFormation::Stack
+    TemplateURL: ./eks-node-group.template
+    TimeoutInMinutes: 30
+    Properties:
+      Parameters:
+        SubnetIds: !Ref PrivateSubnetIds
+        KeyName: !Ref KeyName
+        VpcId: !Ref VpcId
+        ClusterControlPlaneSecurityGroupId: !GetAtt ClusterStack.Output.ClusterControlPlaneSecurityGroup
+        ClusterName: !GetAtt ClusterName
+        NodeImageId: !Ref NodeImageId
+        NodeInstanceType: !Ref NodeInstanceType
+        NodeAutoScalingGroupMinSize: !Ref NodeAutoScalingGroupMinSize
+        NodeAutoScalingGroupMaxSize: !Ref NodeAutoScalingGroupMaxSize
+        NodeGroupName: !Ref NodeGroupName

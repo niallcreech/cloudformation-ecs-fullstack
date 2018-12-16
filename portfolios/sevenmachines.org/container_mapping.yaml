@@ -1,0 +1,24 @@
+name: containers
+description: Container templates
+owner: niall@sevenmachines.org
+vendor: sevenmachines.org
+products:
+- name: eks
+  template: templates/eks.template
+  owner: niall@sevenmachines.org
+  description: Creates an EKS cluster and related components
+#accounts:
+#- identifier: dev
+#  number: 082379909925
+#- identifier: prod
+#  number: 304287074291
+#- identifier: services
+#  number: 182870969818
+#tags:
+#- Key: keynam1
+#  Value: value1
+#  Value: value2
+#- Key: keyname2
+#- role/Admin
+#principals:
+#- role/Admin
