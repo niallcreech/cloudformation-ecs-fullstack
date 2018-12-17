@@ -3,7 +3,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Amazon EKS - Cluster Group'
 
 Parameters:
-
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: VPC Stack Id

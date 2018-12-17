@@ -84,7 +84,7 @@ def sync_service_catalog(s3, artifact):
         zip.extractall(tmp_dir)
         print('Extract Complete')
 
-    portfolios_path = os.path.join(tmp_dir, 'portfolios')
+    portfolios_path = os.path.join(tmp_dir, 'packages')
     portfolios_dirs = os.listdir(portfolios_path)
     for folder in portfolios_dirs:
         vendor_dir = os.path.join(portfolios_path, folder)
