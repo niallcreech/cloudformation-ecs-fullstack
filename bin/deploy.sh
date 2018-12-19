@@ -15,7 +15,7 @@ fi
 aws cloudformation package --template-file ${WORK_DIR}/${TEMPLATE} --s3-bucket=${S3_BUCKET} > ${TMP_DIR}/output.template
 
 aws cloudformation ${COMMAND} \
---stack-name ${STACK_NAME} \
+--stack-name eks \
 --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
 --template-body file://${TMP_DIR}/output.template \
 --parameters \

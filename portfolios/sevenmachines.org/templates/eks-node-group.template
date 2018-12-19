@@ -1,6 +1,8 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Amazon EKS - Node Group'
+Description: |
+  Amazon EKS - Node Group
+  https://raw.githubusercontent.com/awslabs/amazon-eks-ami/master/amazon-eks-nodegroup.yaml'
 
 Parameters:
 
@@ -226,31 +228,35 @@ Resources:
       Path: "/"
       Roles:
       - !Ref NodeInstanceRole
-      - !Ref AutoscalerNodeInstanceRole
 
-  AutoscalerNodeInstanceRole:
-    Type: AWS::IAM::Role
+  RolePolicies:
+    Type: AWS::IAM::Policy
     Properties:
-      AutoscalerRolePolicyDocument:
+      PolicyName: autoscaler
+      PolicyDocument:
         Version: '2012-10-17'
         Statement:
         - Effect: Allow
-          Principal: "*"
+          Resource: "*"
           Action:
-          - autoscaling:DescribeAutoScalingGroups
-          - autoscaling:DescribeAutoScalingInstances
-          - autoscaling:DescribeTags
-          - autoscaling:SetDesiredCapacity
-          - autoscaling:TerminateInstanceInAutoScalingGroup
+            - autoscaling:DescribeAutoScalingGroups
+            - autoscaling:DescribeAutoScalingInstances
+            - autoscaling:DescribeTags
+            - autoscaling:SetDesiredCapacity
+            - autoscaling:TerminateInstanceInAutoScalingGroup
+      Roles:
+      - !Ref NodeInstanceRole
 
   NodeInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      AutoscalerRolePolicyDocument:
+      AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
         - Effect: Allow
-          Principal: "*"
+          Principal:
+            Service:
+            - ec2.amazonaws.com
           Action:
           - sts:AssumeRole
       Path: "/"
@@ -315,7 +321,7 @@ Resources:
   NodeGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      DesiredCapacity: !Ref NodeAutoScalingGroupMaxSize
+      DesiredCapacity: !Ref NodeAutoScalingGroupMinSize
       LaunchConfigurationName: !Ref NodeLaunchConfig
       MinSize: !Ref NodeAutoScalingGroupMinSize
       MaxSize: !Ref NodeAutoScalingGroupMaxSize
@@ -326,6 +332,12 @@ Resources:
         PropagateAtLaunch: 'true'
       - Key: !Sub 'kubernetes.io/cluster/${ClusterName}'
         Value: 'owned'
+        PropagateAtLaunch: 'true'
+      - Key: "k8s.io/cluster-autoscaler/enabled"
+        Value: enabled
+        PropagateAtLaunch: 'true'
+      - Key: !Sub "k8s.io/cluster-autoscaler/${ClusterName}"
+        Value: enabled
         PropagateAtLaunch: 'true'
     UpdatePolicy:
       AutoScalingRollingUpdate:
@@ -384,7 +396,3 @@ Outputs:
   NodeInstanceRole:
     Description: The node instance role
     Value: !GetAtt NodeInstanceRole.Arn
-
-  AutoscalerNodeInstanceRole:
-    Description: The Autoscaler node instance role
-    Value: !GetAtt AutoscalerNodeInstanceRole.Arn
