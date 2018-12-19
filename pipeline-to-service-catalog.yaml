@@ -145,11 +145,11 @@ Resources:
                 - ls -R
             build:
               commands:
-                - mkdir -p tmp/packages; cp -rf portfolios/* tmp/packages/
-                - find tmp/packages -name '*.template' -exec aws cloudformation package --template-file {} --s3-bucket=$S3Bucket --output-template-file={} \;
+                - mkdir -p packages; cp -rf portfolios/* packages/
+                - find packages -name '*.template' -exec aws cloudformation package --template-file {} --s3-bucket=$S3Bucket --output-template-file={} \;
           artifacts:
-            files: tmp/**/*
-            discard-paths: yes
+            files: packages/**/*
+            discard-paths: no
       TimeoutInMinutes: 10
       Tags:
         - Key: Name
