@@ -4,19 +4,14 @@ Description: 'Amazon EKS'
 
 Parameters:
 
+  EnableCluster:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
   EnableNodeGroups:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: VPC Stack Id
-  PublicSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: VPC subnet ids
-  PrivateSubnetIds:
-    Type: List<AWS::EC2::Subnet::Id>
-    Description: VPC subnet ids
   KeyName:
     Description: The EC2 Key Pair to allow SSH access to the instances
     Type: AWS::EC2::KeyPair::KeyName
@@ -38,17 +33,34 @@ Parameters:
     Default: 3
 
 Conditions:
+  ClusterEnabled: !Equals [!Ref EnableCluster, 'true']
   NodeGroupsEnabled: !Equals [!Ref EnableNodeGroups, 'true']
 Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: vpc.template
+      TimeoutInMinutes: 30
+      Parameters:
+        KeyPairName: !Ref KeyName
   ClusterStack:
+    Condition: ClusterEnabled
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: eks-cluster-group.template
       TimeoutInMinutes: 30
       Parameters:
-        VpcId: !Ref VpcId
-        PublicSubnetIds: !Join [",", !Ref PublicSubnetIds]
-        PrivateSubnetIds: !Join [",", !Ref PrivateSubnetIds]
+        VpcId: !GetAtt VPCStack.Outputs.VPCID
+        PublicSubnetIds: !Join
+          - ","
+          - - !GetAtt VPCStack.Outputs.PublicSubnet1ID
+            - !GetAtt VPCStack.Outputs.PublicSubnet2ID
+            - !GetAtt VPCStack.Outputs.PublicSubnet3ID
+        PrivateSubnetIds: !Join
+          - ","
+          - - !GetAtt VPCStack.Outputs.PrivateSubnet1AID
+            - !GetAtt VPCStack.Outputs.PrivateSubnet2AID
+            - !GetAtt VPCStack.Outputs.PrivateSubnet3AID
   PrivateNodesStack:
     Condition: NodeGroupsEnabled
     Type: AWS::CloudFormation::Stack
@@ -56,11 +68,15 @@ Resources:
       TemplateURL: eks-node-group.template
       TimeoutInMinutes: 30
       Parameters:
-        SubnetIds: !Ref PrivateSubnetIds
+        SubnetIds: !Join
+          - ","
+          - - !GetAtt VPCStack.Outputs.PrivateSubnet1AID
+            - !GetAtt VPCStack.Outputs.PrivateSubnet2AID
+            - !GetAtt VPCStack.Outputs.PrivateSubnet3AID
         KeyName: !Ref KeyName
-        VpcId: !Ref VpcId
+        VpcId: !GetAtt VPCStack.Outputs.VPCID
         ClusterControlPlaneSecurityGroupId: !GetAtt ClusterStack.Outputs.ClusterControlPlaneSecurityGroup
-        ClusterName: !Ref ClusterStack
+        ClusterName: !GetAtt ClusterStack.Outputs.ClusterName
         NodeImageId: !Ref NodeImageId
         NodeInstanceType: !Ref NodeInstanceType
         NodeAutoScalingGroupMinSize: !Ref NodeAutoScalingGroupMinSize

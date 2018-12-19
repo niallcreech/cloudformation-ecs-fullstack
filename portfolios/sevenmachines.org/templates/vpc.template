@@ -13,7 +13,6 @@ Metadata:
       - Label:
           default: Availability Zone Configuration
         Parameters:
-          - AvailabilityZones
           - NumberOfAZs
       - Label:
           default: Network Configuration
@@ -49,8 +48,6 @@ Metadata:
           - KeyPairName
           - NATInstanceType
     ParameterLabels:
-      AvailabilityZones:
-        default: Availability Zones
       CreateAdditionalPrivateSubnets:
         default: Create additional private subnets with dedicated network ACLs
       CreatePrivateSubnets:
@@ -108,11 +105,6 @@ Metadata:
       VPCTenancy:
         default: VPC Tenancy
 Parameters:
-  AvailabilityZones:
-    Description: >-
-      List of Availability Zones to use for the subnets in the VPC. Note: The
-      logical order is preserved.
-    Type: 'List<AWS::EC2::AvailabilityZone::Name>'
   CreateAdditionalPrivateSubnets:
     AllowedValues:
       - 'true'
@@ -159,7 +151,7 @@ Parameters:
       - '2'
       - '3'
       - '4'
-    Default: '2'
+    Default: '3'
     Description: >-
       Number of Availability Zones to use in the VPC. This must match your
       selections in the list of Availability Zones parameter.
@@ -497,7 +489,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet1ACIDR
       AvailabilityZone: !Select 
         - '0'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 1A
@@ -506,12 +498,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -519,12 +511,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -532,12 +524,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet1B:
@@ -548,7 +540,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet1BCIDR
       AvailabilityZone: !Select 
         - '0'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 1B
@@ -557,12 +549,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -570,12 +562,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -583,12 +575,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet2A:
@@ -599,7 +591,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet2ACIDR
       AvailabilityZone: !Select 
         - '1'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 2A
@@ -608,12 +600,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -621,12 +613,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -634,12 +626,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet2B:
@@ -650,7 +642,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet2BCIDR
       AvailabilityZone: !Select 
         - '1'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 2B
@@ -659,12 +651,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -672,12 +664,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -685,12 +677,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet3A:
@@ -701,7 +693,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet3ACIDR
       AvailabilityZone: !Select 
         - '2'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 3A
@@ -710,12 +702,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -723,12 +715,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -736,12 +728,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet3B:
@@ -752,7 +744,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet3BCIDR
       AvailabilityZone: !Select 
         - '2'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 3B
@@ -761,12 +753,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -774,12 +766,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -787,12 +779,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet4A:
@@ -803,7 +795,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet4ACIDR
       AvailabilityZone: !Select 
         - '3'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 4A
@@ -812,12 +804,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -825,12 +817,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -838,12 +830,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetATag3
           - !Ref 'AWS::NoValue'
   PrivateSubnet4B:
@@ -854,7 +846,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet4BCIDR
       AvailabilityZone: !Select 
         - '3'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Private subnet 4B
@@ -863,12 +855,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -876,12 +868,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -889,12 +881,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PrivateSubnetBTag3
           - !Ref 'AWS::NoValue'
   PublicSubnet1:
@@ -904,7 +896,7 @@ Resources:
       CidrBlock: !Ref PublicSubnet1CIDR
       AvailabilityZone: !Select 
         - '0'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Public subnet 1
@@ -913,12 +905,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -926,12 +918,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -939,12 +931,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
           - !Ref 'AWS::NoValue'
       MapPublicIpOnLaunch: true
@@ -955,7 +947,7 @@ Resources:
       CidrBlock: !Ref PublicSubnet2CIDR
       AvailabilityZone: !Select 
         - '1'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Public subnet 2
@@ -964,12 +956,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -977,12 +969,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -990,12 +982,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
           - !Ref 'AWS::NoValue'
       MapPublicIpOnLaunch: true
@@ -1007,7 +999,7 @@ Resources:
       CidrBlock: !Ref PublicSubnet3CIDR
       AvailabilityZone: !Select 
         - '2'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Public subnet 3
@@ -1016,12 +1008,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -1029,12 +1021,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -1042,12 +1034,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
           - !Ref 'AWS::NoValue'
       MapPublicIpOnLaunch: true
@@ -1059,7 +1051,7 @@ Resources:
       CidrBlock: !Ref PublicSubnet4CIDR
       AvailabilityZone: !Select 
         - '3'
-        - !Ref AvailabilityZones
+        - Fn::GetAZs: ""
       Tags:
         - Key: Name
           Value: Public subnet 4
@@ -1068,12 +1060,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag1
           - !Ref 'AWS::NoValue'
         - !If 
@@ -1081,12 +1073,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag2
           - !Ref 'AWS::NoValue'
         - !If 
@@ -1094,12 +1086,12 @@ Resources:
           - Key: !Select 
               - '0'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
             Value: !Select 
               - '1'
               - !Split 
-                - =
+                - "="
                 - !Ref PublicSubnetTag3
           - !Ref 'AWS::NoValue'
       MapPublicIpOnLaunch: true

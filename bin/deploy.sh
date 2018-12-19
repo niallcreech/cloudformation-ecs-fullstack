@@ -1,14 +1,24 @@
-#!/usr/bin/env bash
+#!/bin/bash
+set -x
+WORK_DIR="$(PWD)/portfolios/sevenmachines.org/templates"
+TMP_DIR="/tmp"
+TEMPLATE=eks.template
+S3_BUCKET=cf-templates-1mjan0rcjtrzk-eu-west-1
+AMI=ami-0a9006fb385703b54
+STACK_NAME='eks'
+if [ -z $1 ]; then
+    COMMAND="create-stack"
+else
+    COMMAND=$1
+fi
 
-IFS= read -r -p "Enter S3Bucket to use: " S3Bucket
-IFS= read -r -p "Enter CodeCommit Repository to use: " CodeCommit
+aws cloudformation package --template-file ${WORK_DIR}/${TEMPLATE} --s3-bucket=${S3_BUCKET} > ${TMP_DIR}/output.template
 
-cp pipeline-to-service-catalog.yaml scripts/pipeline-to-service-catalog.yaml
-cd scripts
-pip install -r requirements.txt -t "$PWD" --upgrade
-aws cloudformation package --template-file pipeline-to-service-catalog.yaml \
---s3-bucket "$S3Bucket" --s3-prefix cfn-packages --output-template-file transformed-pipeline-to-service-catalog.yaml
-rm pipeline-to-service-catalog.yaml
-aws cloudformation deploy --template-file transformed-pipeline-to-service-catalog.yaml --capabilities CAPABILITY_NAMED_IAM \
---parameter-overrides S3Bucket="$S3Bucket" CodeCommit="$CodeCommit" --stack-name blog-sc-pipeline
-cd ..
+aws cloudformation ${COMMAND} \
+--stack-name ${STACK_NAME} \
+--capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+--template-body file://${TMP_DIR}/output.template \
+--parameters \
+ParameterKey=KeyName,ParameterValue="cryoaws-mini" \
+ParameterKey=EnableCluster,ParameterValue="true" \
+ParameterKey=EnableNodeGroups,ParameterValue="true"

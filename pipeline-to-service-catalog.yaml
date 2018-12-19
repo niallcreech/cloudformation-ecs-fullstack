@@ -147,7 +147,7 @@ Resources:
               commands:
                 - cp lambda-cloudformation.yaml scripts/lambda-cloudformation.yaml
                 - cd scripts && aws cloudformation package --template-file lambda-cloudformation.yaml --s3-bucket $S3Bucket --s3-prefix catalog-sync-lambda/codebuild --output-template-file samtemplate.yaml
-                - cp -rf portfolios/* packages/
+                - mkdir -p packages; cp -rf portfolios/* packages/
                 - find packages -name '*.template' -exec aws cloudformation package --template-file {} --s3-bucket=$S3Bucket --output-template-file={} \;
           artifacts:
             files: scripts/samtemplate.yaml

@@ -226,17 +226,31 @@ Resources:
       Path: "/"
       Roles:
       - !Ref NodeInstanceRole
+      - !Ref AutoscalerNodeInstanceRole
+
+  AutoscalerNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AutoscalerRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: "*"
+          Action:
+          - autoscaling:DescribeAutoScalingGroups
+          - autoscaling:DescribeAutoScalingInstances
+          - autoscaling:DescribeTags
+          - autoscaling:SetDesiredCapacity
+          - autoscaling:TerminateInstanceInAutoScalingGroup
 
   NodeInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      AssumeRolePolicyDocument:
+      AutoscalerRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
         - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
+          Principal: "*"
           Action:
           - sts:AssumeRole
       Path: "/"
@@ -370,3 +384,7 @@ Outputs:
   NodeInstanceRole:
     Description: The node instance role
     Value: !GetAtt NodeInstanceRole.Arn
+
+  AutoscalerNodeInstanceRole:
+    Description: The Autoscaler node instance role
+    Value: !GetAtt AutoscalerNodeInstanceRole.Arn
