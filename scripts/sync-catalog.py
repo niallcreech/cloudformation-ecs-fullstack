@@ -140,6 +140,7 @@ def sync_service_catalog(s3, artifact):
                                 # update
                                 md5_changed, local_md5, remote_md5 = has_md5_changed(s3_client=s3,
                                                                                      bucket_name=bucket,
+                                                                                     key=s3key,
                                                                                      local_file=product_path) 
                                 if md5_changed:
                                     s3.upload_file(product_path, bucket, s3key)
