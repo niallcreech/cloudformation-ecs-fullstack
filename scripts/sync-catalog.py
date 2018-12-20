@@ -22,6 +22,7 @@ import botocore
 import uuid
 import os
 import datetime
+import hashlib
 
 code_pipeline = boto3.client('codepipeline')
 sts_client = boto3.client('sts')
