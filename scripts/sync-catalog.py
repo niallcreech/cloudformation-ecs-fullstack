@@ -184,8 +184,11 @@ def has_md5_changed(s3_client, bucket_name, key, local_file):
         return False, None, None
     local_md5 = md5(filename=local_file)
     if key_md5 == local_md5:
+        print("DEBUG: local and S3 md5 equal: {}".format(remote_md5))
         return True, local_md5, remote_md5
     else:
+        print("DEBUG: local and S3 md5 different: {}!={}"
+              .format(local_md5, remote_md5))
         return False, local_md5, remote_md5
 
 def md5(filename):
