@@ -175,7 +175,7 @@ def sync_service_catalog(s3, artifact):
 
 def has_md5_changed(s3_client, bucket_name, key, local_file):
     try:
-        remote_md5 = s3_client.head_object(Bucket=bucket_name, key=key)['ETag'][1:-1]
+        remote_md5 = s3_client.head_object(Bucket=bucket_name, Key=key)['ETag'][1:-1]
     except botocore.exceptions.ClientError:
         print("DEBUG: S3 object not found")
         return False, None, None
