@@ -172,9 +172,12 @@ def sync_service_catalog(s3, artifact):
                             s3.upload_file(product_path, bucket, s3key)
                             create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
 
-def has_md5_changed(s3_client, bucket_name, local_file):
-    bucket = s3_client.get_bucket(bucket_name, validate=False)
-    remote_md5 = bucket.get_key('file_name').etag[1 :-1]
+def has_md5_changed(s3_client, bucket_name, key, local_file):
+    try:
+        remote_md5 = s3_client.head_object(Bucket=bucket_name, key=key)['ETag'][1:-1]
+    except botocore.exceptions.ClientError:
+        print("DEBUG: S3 object not found")
+        return False, None, None
     local_md5 = md5(filename=local_file)
     if key_md5 == local_md5:
         return True, local_md5, remote_md5
