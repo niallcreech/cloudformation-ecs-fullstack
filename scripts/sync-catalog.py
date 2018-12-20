@@ -136,8 +136,19 @@ def sync_service_catalog(s3, artifact):
                                 for ids in lst_products:
                                     if ids['Name'] == productsInFile['name']:
                                         productid = ids['ProductId']
-                                s3.upload_file(product_path, bucket, s3key)
-                                create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
+                                # Check if product has changed. If it has then
+                                # update
+                                md5_changed, local_md5, remote_md5 = has_md5_changed(s3_client=s3,
+                                                                                     bucket_name=bucket,
+                                                                                     local_file=product_path) 
+                                if md5_changed:
+                                    s3.upload_file(product_path, bucket, s3key)
+                                    print("DEBUG: Local and remote checksums mismatch, "
+                                          "updating product... {}!={}"
+                                          .format(local_md5, remote_md5))
+                                    create_provisioning_artifact(productsInFile, productid, bucket + "/" + s3key)
+                                else:
+                                    print("DEBUG: Local and remote checksums match, not updating...")
                             else:
                                 print('Adding new product {} to existing portfolio {}...'
                                       .format(productsInFile['name'],
@@ -161,6 +172,21 @@ def sync_service_catalog(s3, artifact):
                             s3.upload_file(product_path, bucket, s3key)
                             create_product(productsInFile, PortfolioId, bucket + "/" + s3key)
 
+def has_md5_changed(s3_client, bucket_name, local_file):
+    bucket = s3_client.get_bucket(bucket_name, validate=False)
+    remote_md5 = bucket.get_key('file_name').etag[1 :-1]
+    local_md5 = md5(filename=local_file)
+    if key_md5 == local_md5:
+        return True, local_md5, remote_md5
+    else:
+        return False, local_md5, remote_md5
+
+def md5(filename):
+    hash_md5 = hashlib.md5()
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 
 def update_portfolio(portfolio_obj, mapping_obj, bucket):
     """ Pseudo code as 
