@@ -122,12 +122,13 @@ def sync_service_catalog(s3, artifact):
                         for productsInFile in objfile['products']:
                             product_path = os.path.join(vendor_dir, productsInFile['template'])
                             mapping_name = str(mappingfile).split(".yaml")[0]
+                            md5_key = md5(filename=product_path)
                             s3key = ('sc-templates/'
                                      + vendor_dir
                                      + mapping_name
                                      + productsInFile['name']
                                      + '/templates/'
-                                     + str(uuid.uuid4()) + '.yaml'
+                                     + md5_key + '.yaml'
                                      )
                             if productsInFile['name'] in lst_products_name:
                                 print('Updating existing product {} in portfolio {}...'
@@ -162,12 +163,13 @@ def sync_service_catalog(s3, artifact):
                         PortfolioId = create_portfolio_response['PortfolioDetail']['Id']
                         associate_principal_with_portfolio(create_portfolio_response['PortfolioDetail'], objfile)
                         for productsInFile in objfile['products']:
+                            md5_key = md5(filename=product_path)
                             s3key = ('sc-templates/'
                                      + vendor_dir
                                      + mapping_name
                                      + productsInFile['name']
                                      + '/templates/'
-                                     + str(uuid.uuid4()) + '.yaml'
+                                     + md5_key + '.yaml'
                                      )
                             product_path = os.path.join(vendor_dir, productsInFile['template'])
                             s3.upload_file(product_path, bucket, s3key)
