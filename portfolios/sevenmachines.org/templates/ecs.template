@@ -1,0 +1,41 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon ECS Fargate'
+
+Parameters:
+
+  EnableCluster:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+Conditions:
+  ClusterEnabled: !Equals [!Ref EnableCluster, 'true']
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: vpc.template
+      TimeoutInMinutes: 30
+      Parameters:
+        KeyPairName: !Ref KeyName
+  ClusterStack:
+    Condition: ClusterEnabled
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ecs-cluster.template
+      TimeoutInMinutes: 30
+      Parameters:
+        VpcId: !GetAtt VPCStack.Outputs.VPCID
+        PublicSubnetIds: !Join
+          - ","
+          - - !GetAtt VPCStack.Outputs.PublicSubnet1ID
+            - !GetAtt VPCStack.Outputs.PublicSubnet2ID
+            - !GetAtt VPCStack.Outputs.PublicSubnet3ID
+        PrivateSubnetIds: !Join
+          - ","
+          - - !GetAtt VPCStack.Outputs.PrivateSubnet1AID
+            - !GetAtt VPCStack.Outputs.PrivateSubnet2AID
+            - !GetAtt VPCStack.Outputs.PrivateSubnet3AID

@@ -442,6 +442,17 @@ Conditions:
         - !Equals 
           - !Ref 'AWS::Region'
           - cn-north-1
+  DynamoDBVPCEndpointCondition: !And 
+    - !Condition PrivateSubnetsCondition
+    - !Not 
+      - !Or 
+        - !Equals 
+          - !Ref 'AWS::Region'
+          - us-gov-west-1
+        - !Equals 
+          - !Ref 'AWS::Region'
+          - cn-north-1
+  
 Resources:
   DHCPOptions:
     Type: 'AWS::EC2::DHCPOptions'
@@ -1704,6 +1715,46 @@ Resources:
           FromPort: '1'
           ToPort: '65535'
           CidrIp: !Ref VPCCIDR
+  DynamoDBVPCEndpoint:
+    Condition: DynamoDBVPCEndpointCondition
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: '*'
+            Effect: Allow
+            Resource: '*'
+            Principal: '*'
+      RouteTableIds:
+        - !Ref PrivateSubnet1ARouteTable
+        - !Ref PrivateSubnet2ARouteTable
+        - !If 
+          - PrivateSubnets&3AZCondition
+          - !Ref PrivateSubnet3ARouteTable
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - PrivateSubnets&4AZCondition
+          - !Ref PrivateSubnet4ARouteTable
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - AdditionalPrivateSubnetsCondition
+          - !Ref PrivateSubnet1BRouteTable
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - AdditionalPrivateSubnetsCondition
+          - !Ref PrivateSubnet2BRouteTable
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - AdditionalPrivateSubnets&3AZCondition
+          - !Ref PrivateSubnet3BRouteTable
+          - !Ref 'AWS::NoValue'
+        - !If 
+          - AdditionalPrivateSubnets&4AZCondition
+          - !Ref PrivateSubnet4BRouteTable
+          - !Ref 'AWS::NoValue'
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
+      VpcId: !Ref VPC
   S3VPCEndpoint:
     Condition: S3VPCEndpointCondition
     Type: 'AWS::EC2::VPCEndpoint'
@@ -1742,11 +1793,7 @@ Resources:
           - AdditionalPrivateSubnets&4AZCondition
           - !Ref PrivateSubnet4BRouteTable
           - !Ref 'AWS::NoValue'
-      ServiceName: !Join 
-        - ''
-        - - com.amazonaws.
-          - !Ref 'AWS::Region'
-          - .s3
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
       VpcId: !Ref VPC
 Outputs:
   NAT1EIP:
@@ -1919,6 +1966,12 @@ Outputs:
     Value: !Ref S3VPCEndpoint
     Export:
       Name: !Sub '${AWS::StackName}-S3VPCEndpoint'
+  DynamoDBVPCEndpoint:
+    Condition: DynamoDBVPCEndpointCondition
+    Description: DynamoDB VPC Endpoint
+    Value: !Ref DynamoDBVPCEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBVPCEndpoint'
   PrivateSubnet1ARouteTable:
     Condition: PrivateSubnetsCondition
     Value: !Ref PrivateSubnet1ARouteTable

@@ -7,6 +7,10 @@ products:
   template: templates/eks.template
   owner: niall@sevenmachines.org
   description: Creates an EKS cluster and related components
+- name: ecs
+  template: templates/ecs.template
+  owner: niall@sevenmachines.org
+  description: Creates an ECS cluster and related components
 #accounts:
 #- identifier: dev
 #  number: 082379909925
