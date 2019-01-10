@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates a DB2 Cluster using HADR, TSAMP and Automatic Client Reroute (ACR). **WARNING** This template creates Amazon Ec2 Instances. You will be billed for the AWS resources used if you create a stack from this template.
+Description: |
+  Creates a DB2 Cluster using HADR, TSAMP and Automatic Client Reroute (ACR).
 
 Metadata:
   'AWS::CloudFormation::Interface':
@@ -42,7 +43,10 @@ Parameters:
   ClientSubnet:
     Type: AWS::EC2::Subnet::Id
     Description: 'Id of the subnet to place the DB2 Client instance'
-
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Description: The AMI to use
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
   S3Bucket:
     Type: String
     Description: 'Name of S3 bucket containing DB2 configuration'
@@ -113,73 +117,6 @@ Parameters:
     Description: 'Size (GB) of DB EBS Volume'
     Type: String
     Default: '10'
-
-#   -----------
-#   Mappings
-#   -----------
-
-Mappings:
-  AWSInstanceType2Arch:
-    m4.large:
-      Arch: HVM64
-    m4.xlarge:
-      Arch: HVM64
-    m4.2xlarge:
-      Arch: HVM64
-    m4.4xlarge:
-      Arch: HVM64
-    m4.10xlarge:
-      Arch: HVM64
-    c4.large:
-      Arch: HVM64
-    c4.xlarge:
-      Arch: HVM64
-    c4.2xlarge:
-      Arch: HVM64
-    c4.4xlarge:
-      Arch: HVM64
-    c4.8xlarge:
-      Arch: HVM64
-    r3.large:
-      Arch: HVM64
-    r3.xlarge:
-      Arch: HVM64
-    r3.2xlarge:
-      Arch: HVM64
-    r3.4xlarge:
-      Arch: HVM64
-    r3.8xlarge:
-      Arch: HVM64
-
-  AWSRegionArch2AMI:
-    us-east-1:
-      HVM64: ami-7dce6507
-    us-east-2:
-      HVM64: ami-43391926
-    us-west-2:
-      HVM64: ami-3408c34c
-    us-west-1:
-      HVM64: ami-9c447bfc
-    eu-west-1:
-      HVM64: ami-b13899c8
-    eu-west-2:
-      HVM64: ami-66051402
-    eu-central-1:
-      HVM64: ami-dc0287b3
-    ap-northeast-1:
-      HVM64: ami-9f48e4f9
-    ap-northeast-2:
-      HVM64: ami-d7df06b9
-    ap-southeast-1:
-      HVM64: ami-a59b49c6
-    ap-southeast-2:
-      HVM64: ami-cb92dfa8
-    ap-south-1:
-      HVM64: ami-3c374c53
-    ca-central-1:
-      HVM64: ami-beea56da
-    sa-east-1:
-      HVM64: ami-2d314a41
 
 Resources:
 
@@ -412,13 +349,7 @@ Resources:
   db2Primary:
     Type: 'AWS::EC2::Instance'
     Properties:
-      ImageId: !FindInMap 
-        - AWSRegionArch2AMI
-        - !Ref 'AWS::Region'
-        - !FindInMap 
-          - AWSInstanceType2Arch
-          - !Ref LinuxInstanceType
-          - Arch
+      ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyPairName
       InstanceType: !Ref LinuxInstanceType
       Monitoring: true
@@ -487,11 +418,9 @@ Resources:
             - |
               mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
             - |
-              apt-get update >> /tmp/cfn-init.log 2>&1
+              yum update -y >> /tmp/cfn-init.log 2>&1
             - |
-              dpkg --add-architecture i386
-            - |
-              apt-get install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+              yum install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
             - |
               pip install awscli
             - >
@@ -653,13 +582,7 @@ Resources:
   db2Secondary:
     Type: 'AWS::EC2::Instance'
     Properties:
-      ImageId: !FindInMap 
-        - AWSRegionArch2AMI
-        - !Ref 'AWS::Region'
-        - !FindInMap 
-          - AWSInstanceType2Arch
-          - !Ref LinuxInstanceType
-          - Arch
+      ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyPairName
       InstanceType: !Ref LinuxInstanceType
       Monitoring: true
@@ -728,9 +651,9 @@ Resources:
             - |
               mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
             - |
-              apt-get update >> /tmp/cfn-init.log 2>&1
+              yum update -y >> /tmp/cfn-init.log 2>&1
             - |
-              apt-get install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+              yum install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
             - |
               pip install awscli
             - >
@@ -864,13 +787,7 @@ Resources:
   db2Client:
     Type: 'AWS::EC2::Instance'
     Properties:
-      ImageId: !FindInMap 
-        - AWSRegionArch2AMI
-        - !Ref 'AWS::Region'
-        - !FindInMap 
-          - AWSInstanceType2Arch
-          - !Ref LinuxInstanceType
-          - Arch
+      ImageId: !Ref LatestAmiId
       KeyName: !Ref KeyPairName
       InstanceType: !Ref LinuxInstanceType
       Monitoring: true
@@ -915,9 +832,9 @@ Resources:
             - |
               mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
             - |
-              apt-get update >> /tmp/cfn-init.log 2>&1
+              yum update -y >> /tmp/cfn-init.log 2>&1
             - |
-              apt-get install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+              yum install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
             - |
               pip install awscli
             - >
