@@ -382,8 +382,9 @@ Resources:
           useradd -u 1102 -g dasadm1 -m -d /home/dasusr1 dasusr1 >> /tmp/cfn-init.log 2>&1
           echo "vm.swappiness=5" >> /etc/sysctl.conf
           mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
-          yum update -y >> /tmp/cfn-init.log 2>&1
-          yum install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+          PKG_MANAGER=$( command -v yum || command -v apt-get )
+          ${PKG_MANAGER} update -y >> /tmp/cfn-init.log 2>&1
+          ${PKG_MANAGER} install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
           pip install awscli
           aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-secname 
           aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-priname
@@ -530,8 +531,9 @@ Resources:
           useradd -u 1102 -g dasadm1 -m -d /home/dasusr1 dasusr1 >> /tmp/cfn-init.log 2>&1
           echo "vm.swappiness=5" >> /etc/sysctl.conf
           mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
-          yum update -y >> /tmp/cfn-init.log 2>&1
-          yum install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+          PKG_MANAGER=$( command -v yum || command -v apt-get )
+          ${PKG_MANAGER} update -y >> /tmp/cfn-init.log 2>&1
+          ${PKG_MANAGER} install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
           pip install awscli
           aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-secname 
           aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-priname 
@@ -649,8 +651,9 @@ Resources:
           useradd -u 1102 -g dasadm1 -m -d /home/dasusr1 dasusr1 >> /tmp/cfn-init.log 2>&1
           echo "vm.swappiness=5" >> /etc/sysctl.conf
           mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
-          yum update -y >> /tmp/cfn-init.log 2>&1
-          yum install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+          PKG_MANAGER=$( command -v yum || command -v apt-get )
+          ${PKG_MANAGER} update -y >> /tmp/cfn-init.log 2>&1
+          ${PKG_MANAGER} install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
           pip install awscli
           echo "PROD                          = CLIENT" > /DB2/DB2_INSTALL/db2-hadr.rsp &&
           echo "FILE                          = /DB2/DB2_BINARY" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
