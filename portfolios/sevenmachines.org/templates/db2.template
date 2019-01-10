@@ -1,0 +1,941 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a DB2 Cluster using HADR, TSAMP and Automatic Client Reroute (ACR). **WARNING** This template creates Amazon Ec2 Instances. You will be billed for the AWS resources used if you create a stack from this template.
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Generic Parameters
+        Parameters:
+          - VpcId
+          - DBSubnets
+          - ClientSubnet
+          - KeyPairName
+          - LinuxAMI
+          - LinuxInstanceType
+          - DBVolumeSize
+          - S3Bucket
+          - DB2Instance
+          - DB2Database
+          - SyncMode
+          - SSHCidr
+      - Label:
+          default: Primary Instance Details
+        Parameters:
+          - PrimaryEC2InstanceName
+      - Label:
+          default: Secondary Instance Details
+        Parameters:
+          - SecondaryEC2InstanceName
+      - Label:
+          default: DB2 Client Instance Details
+        Parameters:
+          - ClientEC2InstanceName
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: 'Id of the VPC'
+  DBSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of subnets to place DB instances in
+  ClientSubnet:
+    Type: AWS::EC2::Subnet::Id
+    Description: 'Id of the subnet to place the DB2 Client instance'
+
+  S3Bucket:
+    Type: String
+    Description: 'Name of S3 bucket containing DB2 configuration'
+
+  DB2Instance:
+    Type: String
+    Description: 'lowercase name of DB2 Instance'
+    Default: 'db2inst1'
+  DB2Database:
+    Type: String
+    Description: 'UPPERCASE name of the DB2 database'
+    Default: 'TESTDB'
+    AllowedPattern: '[A-Z]{3,8}'
+    ConstraintDescription: 'Must be 3 to 8 characters and contain only letters'
+  SyncMode:
+    Type: String
+    Default: 'NEARSYNC'
+    AllowedValues:
+      - 'ASYNC'
+      - 'NEARSYNC'
+      - 'SYNC'
+    Description: ' Required HADR synchronization mode'
+
+  PrimaryEC2InstanceName:
+    Description: 'Tag: Name of the Primary instance'
+    Type: String
+    Default: 'db2-hadr-pri'
+
+  SecondaryEC2InstanceName:
+    Description: 'Tag: Name of the Secondary instance'
+    Type: String
+    Default: 'db2-hadr-sec'
+
+  ClientEC2InstanceName:
+    Description: 'Tag: Name of the DB2 Client instance'
+    Type: String
+    Default: 'db2-hadr-client'
+
+  SSHCidr:
+    Type: String
+    Description: 'CIDR Block to allow SSH Access'
+    Default: '10.10.10.0/24'
+
+  KeyPairName:
+    Description: 'Name of an existing EC2 KeyPair to enable SSH access to the instances'
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  LinuxInstanceType:
+    Type: String
+    Default: m4.large
+    AllowedValues:
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+    Description: 'Instance Type.'
+  DBVolumeSize:
+    Description: 'Size (GB) of DB EBS Volume'
+    Type: String
+    Default: '10'
+
+#   -----------
+#   Mappings
+#   -----------
+
+Mappings:
+  AWSInstanceType2Arch:
+    m4.large:
+      Arch: HVM64
+    m4.xlarge:
+      Arch: HVM64
+    m4.2xlarge:
+      Arch: HVM64
+    m4.4xlarge:
+      Arch: HVM64
+    m4.10xlarge:
+      Arch: HVM64
+    c4.large:
+      Arch: HVM64
+    c4.xlarge:
+      Arch: HVM64
+    c4.2xlarge:
+      Arch: HVM64
+    c4.4xlarge:
+      Arch: HVM64
+    c4.8xlarge:
+      Arch: HVM64
+    r3.large:
+      Arch: HVM64
+    r3.xlarge:
+      Arch: HVM64
+    r3.2xlarge:
+      Arch: HVM64
+    r3.4xlarge:
+      Arch: HVM64
+    r3.8xlarge:
+      Arch: HVM64
+
+  AWSRegionArch2AMI:
+    us-east-1:
+      HVM64: ami-7dce6507
+    us-east-2:
+      HVM64: ami-43391926
+    us-west-2:
+      HVM64: ami-3408c34c
+    us-west-1:
+      HVM64: ami-9c447bfc
+    eu-west-1:
+      HVM64: ami-b13899c8
+    eu-west-2:
+      HVM64: ami-66051402
+    eu-central-1:
+      HVM64: ami-dc0287b3
+    ap-northeast-1:
+      HVM64: ami-9f48e4f9
+    ap-northeast-2:
+      HVM64: ami-d7df06b9
+    ap-southeast-1:
+      HVM64: ami-a59b49c6
+    ap-southeast-2:
+      HVM64: ami-cb92dfa8
+    ap-south-1:
+      HVM64: ami-3c374c53
+    ca-central-1:
+      HVM64: ami-beea56da
+    sa-east-1:
+      HVM64: ami-2d314a41
+
+Resources:
+
+  InstancePolicy:
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Action:
+          - "s3:PutObject"
+          - "s3:GetObject"
+          - "s3:DeleteObject"
+          Effect: Allow
+          Resource: 
+            Fn::Join: 
+            - ""
+            - 
+              - "arn:aws:s3:::"
+              - !Ref S3Bucket
+              - "/*"
+        - Action:
+          - "s3:ListBucket"
+          Effect: Allow
+          Resource: 
+            Fn::Join: 
+            - ""
+            - 
+              - "arn:aws:s3:::"
+              - !Ref S3Bucket
+      Roles:
+      - Ref: InstanceRole
+    Type: AWS::IAM::ManagedPolicy
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+
+  InstanceRoleProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+      - Ref: InstanceRole
+
+  ClientSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'DB2 Client Security Group'
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: 'DB2 Client Security Group'
+
+  DBSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'DB2 HADR Security Group'
+      VpcId: !Ref VpcId
+      Tags:
+      - Key: Name
+        Value: 'DB2 HADR Security Group'
+
+  DBIngress1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'TSA cthats cthags'
+      IpProtocol: udp
+      FromPort: 12347
+      ToPort: 12348
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress2:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'DB2 listener for HADR'
+      IpProtocol: tcp
+      FromPort: 60000
+      ToPort: 60012
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress3:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'HADR ports'
+      IpProtocol: tcp
+      FromPort: 50001
+      ToPort: 50002
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress4:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'TSA rmc udp'
+      IpProtocol: udp
+      FromPort: 657
+      ToPort: 657
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress5:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'TSA rmc tcp'
+      IpProtocol: tcp
+      FromPort: 657
+      ToPort: 657
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress6:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'TSA ping'
+      IpProtocol: icmp
+      FromPort: -1
+      ToPort: -1
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress7:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'SSH Access'
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref SSHCidr
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBIngress8:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'DB2 listener for Clients'
+      IpProtocol: tcp
+      FromPort: 60000
+      ToPort: 60012
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - ClientSecurityGroup
+        - GroupId
+      GroupId:
+        Fn::GetAtt:
+        - DBSecurityGroup
+        - GroupId
+
+  DBClientIngress1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      Description: 'SSH Access'
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref SSHCidr
+      GroupId:
+        Fn::GetAtt:
+        - ClientSecurityGroup
+        - GroupId
+
+#   ------------------
+#   DB2 Primary Node
+#   ------------------
+
+  db2PrimaryDBVolume:
+    Type: 'AWS::EC2::Volume'
+    Properties:
+      Size: !Ref DBVolumeSize
+      AvailabilityZone: !GetAtt 
+        - db2Primary
+        - AvailabilityZone
+      Tags:
+        - Key: Name
+          Value: !Ref PrimaryEC2InstanceName
+  db2PrimaryDBVolumeMount:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Properties:
+      InstanceId: !Ref db2Primary
+      VolumeId: !Ref db2PrimaryDBVolume
+      Device: /dev/sdf
+
+  db2Primary:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref LinuxInstanceType
+          - Arch
+      KeyName: !Ref KeyPairName
+      InstanceType: !Ref LinuxInstanceType
+      Monitoring: true
+      IamInstanceProfile: !Ref InstanceRoleProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          SubnetId: !Select [0, !Ref DBSubnets]
+          GroupSet:
+            - !Ref DBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Ref PrimaryEC2InstanceName
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash -xe
+            - |
+              # DB2 Sync Mode
+            - 'SYNCMODE='
+            - !Ref SyncMode
+            - |+
+
+            - |
+              # StackName
+            - 'STACKNAME='
+            - !Ref 'AWS::StackName'
+            - |+
+
+            - |
+              # Region
+            - 'AWSREGION='
+            - !Ref 'AWS::Region'
+            - |+
+
+            - |
+              # S3 bucket
+            - 'S3BUCKET='
+            - !Ref S3Bucket
+            - |+
+
+            - |
+              # DB2 Instance
+            - 'DB2INSTANCE='
+            - !Ref DB2Instance
+            - |+
+
+            - |
+              # DB2 Database
+            - 'DB2DB='
+            - !Ref DB2Database
+            - |+
+
+            - >
+              groupadd -g 999 db2iadm1 && 
+              groupadd -g 998 db2fsdm1 && 
+              groupadd -g 997 dasadm1 >> /tmp/cfn-init.log 2>&1
+            - >
+              useradd -u 1004 -g db2iadm1 -m -d /home/$DB2INSTANCE $DB2INSTANCE && 
+              useradd -u 1003 -g db2fsdm1 -m -d /home/db2fenc1 db2fenc1 && 
+              useradd -u 1002 -g dasadm1 -m -d /home/dasusr1 dasusr1 >> /tmp/cfn-init.log 2>&1
+            - |
+              echo "vm.swappiness=5" >> /etc/sysctl.conf
+            - |
+              mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
+            - |
+              apt-get update >> /tmp/cfn-init.log 2>&1
+            - |
+              dpkg --add-architecture i386
+            - |
+              apt-get install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+            - |
+              pip install awscli
+            - >
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-secname &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-priname &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-timestamp &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-hadrdone
+            - >
+              echo "PROD                          = DB2_SERVER_EDITION" > /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "FILE                          = /DB2/DB2_BINARY" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "LIC_AGREEMENT                 = ACCEPT" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "INSTANCE                      = DB2_INST" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.NAME                 = $DB2INSTANCE" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.GROUP_NAME           = db2iadm1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.AUTOSTART            = NO" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.START_DURING_INSTALL = NO" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.PORT_NUMBER          = 60000" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.FENCED_USERNAME      = db2fenc1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.FENCED_GROUP_NAME    = db2fsdm1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "INSTALL_TYPE                  = CUSTOM" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "COMP                          = TSAMP" >> /DB2/DB2_INSTALL/db2-hadr.rsp
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/v11.1_linuxx64_server_t.tar.gz /DB2/DB2_INSTALL/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              cd /DB2/DB2_INSTALL && tar -xvf v11.1_linuxx64_server_t.tar.gz  >> /tmp/cfn-init.log 2>&1
+            - |
+              /DB2/DB2_INSTALL/server_t/db2setup -f sysreq -r /DB2/DB2_INSTALL/db2-hadr.rsp  >> /tmp/cfn-init.log 2>&1
+            - |
+              chmod +x /DB2/DB2_BINARY/adm/db2start  >> /tmp/cfn-init.log 2>&1
+            - |
+              chmod +x /DB2/DB2_BINARY/adm/db2stop  >> /tmp/cfn-init.log 2>&1
+            - |
+              echo $HOSTNAME > $STACKNAME-priname && aws s3 cp $STACKNAME-priname s3://$S3BUCKET/db2/$STACKNAME-priname  >> /tmp/cfn-init.log 2>&1
+            - |
+              while ! aws s3 ls s3://$S3BUCKET/db2/$STACKNAME-secname >/dev/null 2>&1; do echo waiting for secondary DB2 setup to complete; sleep 10; done
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/$STACKNAME-secname $STACKNAME-secname --region $AWSREGION && SECNAME=$(<$STACKNAME-secname)  >> /tmp/cfn-init.log 2>&1
+            - |
+              PRINAME=$HOSTNAME
+            - |
+              while [ ! -e /dev/xvdf ]; do echo waiting for /dev/xvdf to attach; sleep 10; done
+            - |
+              mkfs.ext4 /dev/xvdf  >> /tmp/cfn-init.log 2>&1
+            - |
+              mkdir -p /DB2/DB  >> /tmp/cfn-init.log 2>&1
+            - |
+              mount /dev/xvdf /DB2/DB  >> /tmp/cfn-init.log 2>&1
+            - |
+              echo "/dev/xvdf   /DB2/DB        ext4    defaults        0   0" >> /etc/fstab
+            - >
+              mkdir /DB2/DB/DB2_DATA &&
+              mkdir /DB2/DB/DB2_LOGS &&
+              mkdir /DB2/DB/DB2_BACKUP &&
+              chown $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_DATA &&
+              chown $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_LOGS &&
+              chown $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_BACKUP  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2start"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 CREATE DATABASE $DB2DB AUTOMATIC STORAGE YES ON /DB2/DB/DB2_DATA DBPATH ON /DB2/DB/DB2_LOGS"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using LOGARCHMETH1 LOGRETAIN"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 backup database $DB2DB TO /DB2/DB/DB2_BACKUP"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_LOCAL_HOST $PRINAME"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_LOCAL_SVC 50001"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_REMOTE_HOST $SECNAME"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_REMOTE_SVC 50002"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_REMOTE_INST $DB2INSTANCE"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_SYNCMODE $SYNCMODE"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using LOGINDEXBUILD ON"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_TIMEOUT 60"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_PEER_WINDOW 120"  >> /tmp/cfn-init.log 2>&1
+            - |
+              aws s3 cp /DB2/DB/DB2_BACKUP/* s3://$S3BUCKET/db2/backup/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              for i in `ls /DB2/DB/DB2_BACKUP`; do BACKUPFILE=$i; done;
+            - |
+              TIMESTAMP=$(echo $BACKUPFILE | cut -d'.' -f 5)
+            - |
+              echo $TIMESTAMP > $STACKNAME-timestamp
+            - |
+              aws s3 cp $STACKNAME-timestamp s3://$S3BUCKET/db2/$STACKNAME-timestamp --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              while ! aws s3 ls s3://$S3BUCKET/db2/$STACKNAME-hadrdone >/dev/null 2>&1; do echo waiting for standby HADR to complete; sleep 10; done
+            - |
+              su - $DB2INSTANCE -c "db2 start hadr on database $DB2DB as primary"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 -v update alternate server for db $DB2DB using hostname $SECNAME port 60000"  >> /tmp/cfn-init.log 2>&1
+            - |
+              preprpnode $PRINAME $SECNAME  >> /tmp/cfn-init.log 2>&1
+            - |
+              echo done > $STACKNAME-tsaprepdone && aws s3 cp $STACKNAME-tsaprepdone s3://$S3BUCKET/db2/$STACKNAME-tsaprepdone
+            - >
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "<DB2Cluster xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"db2ha.xsd\" clusterManagerName=\"TSA\" version=\"1.0\">" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  <ClusterDomain domainName=\"db2HAdomain\">" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "     <ClusterNode clusterNodeName=\"$PRINAME\"/>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "     <ClusterNode clusterNodeName=\"$SECNAME\"/>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </ClusterDomain>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  <FailoverPolicy>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "     <HADRFailover></HADRFailover>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </FailoverPolicy>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&              
+              echo "  <DB2PartitionSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "    <DB2Partition dbpartitionnum=\"0\" instanceName=\"$DB2INSTANCE\">" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "    </DB2Partition>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </DB2PartitionSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  <HADRDBSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "    <HADRDB databaseName=\"$DB2DB\" localInstance=\"$DB2INSTANCE\" remoteInstance=\"$DB2INSTANCE\" localHost=\"$PRINAME\" remoteHost=\"$SECNAME\" />" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </HADRDBSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "</DB2Cluster>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml
+            - |
+              chmod 777 /DB2/DB2_INSTALL/db2haicu-hadr.xml
+            - |
+              while ! aws s3 ls s3://$S3BUCKET/db2/$STACKNAME-tsadone >/dev/null 2>&1; do echo waiting for standby TSA to complete; sleep 10; done
+            - |
+              su - $DB2INSTANCE -c "db2haicu -f /DB2/DB2_INSTALL/db2haicu-hadr.xml"  >> /tmp/cfn-init.log 2>&1
+            - >
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-secname &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-priname &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-timestamp &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-hadrdone &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-tsadone &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-tsaprepdone
+            - |
+              rm -rf /DB2/DB2_INSTALL
+
+#   ------------------
+#   DB2 Secondary Node
+#   ------------------
+
+  db2SecondaryDBVolume:
+    Type: 'AWS::EC2::Volume'
+    Properties:
+      Size: !Ref DBVolumeSize
+      AvailabilityZone: !GetAtt 
+        - db2Secondary
+        - AvailabilityZone
+      Tags:
+        - Key: Name
+          Value: !Ref SecondaryEC2InstanceName
+
+  db2SecondaryDBVolumeMount:
+    Type: 'AWS::EC2::VolumeAttachment'
+    Properties:
+      InstanceId: !Ref db2Secondary
+      VolumeId: !Ref db2SecondaryDBVolume
+      Device: /dev/sdf
+
+  db2Secondary:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref LinuxInstanceType
+          - Arch
+      KeyName: !Ref KeyPairName
+      InstanceType: !Ref LinuxInstanceType
+      Monitoring: true
+      IamInstanceProfile: !Ref InstanceRoleProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          SubnetId: !Select [1, !Ref DBSubnets]
+          GroupSet:
+            - !Ref DBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Ref SecondaryEC2InstanceName
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash -xe
+            - |
+              # DB2 Sync Mode
+            - 'SYNCMODE='
+            - !Ref SyncMode
+            - |+
+
+            - |
+              # StackName
+            - 'STACKNAME='
+            - !Ref 'AWS::StackName'
+            - |+
+
+            - |
+              # Region
+            - 'AWSREGION='
+            - !Ref 'AWS::Region'
+            - |+
+
+            - |
+              # S3 bucket
+            - 'S3BUCKET='
+            - !Ref S3Bucket
+            - |+
+
+            - |
+              # DB2 Instance
+            - 'DB2INSTANCE='
+            - !Ref DB2Instance
+            - |+
+
+            - |
+              # DB2 Database
+            - 'DB2DB='
+            - !Ref DB2Database
+            - |+
+
+            - >
+              groupadd -g 999 db2iadm1 && 
+              groupadd -g 998 db2fsdm1 && 
+              groupadd -g 997 dasadm1 >> /tmp/cfn-init.log 2>&1
+            - >
+              useradd -u 1004 -g db2iadm1 -m -d /home/$DB2INSTANCE $DB2INSTANCE && 
+              useradd -u 1003 -g db2fsdm1 -m -d /home/db2fenc1 db2fenc1 && 
+              useradd -u 1002 -g dasadm1 -m -d /home/dasusr1 dasusr1 >> /tmp/cfn-init.log 2>&1
+            - |
+              echo "vm.swappiness=5" >> /etc/sysctl.conf
+            - |
+              mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
+            - |
+              apt-get update >> /tmp/cfn-init.log 2>&1
+            - |
+              apt-get install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+            - |
+              pip install awscli
+            - >
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-secname &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-priname &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-timestamp &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-hadrdone &&
+              aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-tsaprepdone
+            - >
+              echo "PROD                          = DB2_SERVER_EDITION" > /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "FILE                          = /DB2/DB2_BINARY" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "LIC_AGREEMENT                 = ACCEPT" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "INSTANCE                      = DB2_INST" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.NAME                 = $DB2INSTANCE" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.GROUP_NAME           = db2iadm1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.AUTOSTART            = NO" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.START_DURING_INSTALL = NO" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.PORT_NUMBER          = 60000" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.FENCED_USERNAME      = db2fenc1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.FENCED_GROUP_NAME    = db2fsdm1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "INSTALL_TYPE                  = CUSTOM" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "COMP                          = TSAMP" >> /DB2/DB2_INSTALL/db2-hadr.rsp
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/v11.1_linuxx64_server_t.tar.gz /DB2/DB2_INSTALL/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              cd /DB2/DB2_INSTALL && tar -xvf v11.1_linuxx64_server_t.tar.gz  >> /tmp/cfn-init.log 2>&1
+            - |
+              /DB2/DB2_INSTALL/server_t/db2setup -f sysreq -r /DB2/DB2_INSTALL/db2-hadr.rsp  >> /tmp/cfn-init.log 2>&1
+            - |
+              chmod +x /DB2/DB2_BINARY/adm/db2start
+            - |
+              chmod +x /DB2/DB2_BINARY/adm/db2stop
+            - |
+              echo $HOSTNAME > $STACKNAME-secname && aws s3 cp $STACKNAME-secname s3://$S3BUCKET/db2/$STACKNAME-secname
+            - |
+              while ! aws s3 ls s3://$S3BUCKET/db2/$STACKNAME-priname >/dev/null 2>&1; do echo waiting for primary DB2 setup to complete; sleep 10; done
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/$STACKNAME-priname $STACKNAME-priname --region $AWSREGION && PRINAME=$(<$STACKNAME-priname)  >> /tmp/cfn-init.log 2>&1
+            - |
+              SECNAME=$HOSTNAME
+            - |
+              while [ ! -e /dev/xvdf ]; do echo waiting for /dev/xvdf to attach; sleep 10; done
+            - |
+              mkfs.ext4 /dev/xvdf  >> /tmp/cfn-init.log 2>&1
+            - |
+              mkdir -p /DB2/DB
+            - |
+              mount /dev/xvdf /DB2/DB
+            - |
+              echo "/dev/xvdf   /DB2/DB        ext4    defaults        0   0" >> /etc/fstab
+            - >
+              mkdir /DB2/DB/DB2_DATA &&
+              mkdir /DB2/DB/DB2_LOGS &&
+              mkdir /DB2/DB/DB2_BACKUP &&
+              chown $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_DATA &&
+              chown $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_LOGS &&
+              chown $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_BACKUP
+            - |
+              su - $DB2INSTANCE -c "db2start"  >> /tmp/cfn-init.log 2>&1
+            - |
+              while ! aws s3 ls s3://$S3BUCKET/db2/$STACKNAME-timestamp >/dev/null 2>&1; do echo waiting for primary DB2 backup to complete; sleep 10; done
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/$STACKNAME-timestamp $STACKNAME-timestamp --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              TIMESTAMP=$(<$STACKNAME-timestamp)
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/backup/$DB2DB.0.$DB2INSTANCE.DBPART000.$TIMESTAMP.001 /DB2/DB/DB2_BACKUP/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              chown -R $DB2INSTANCE:db2iadm1 /DB2/DB/DB2_BACKUP  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 restore database $DB2DB FROM /DB2/DB/DB2_BACKUP taken at $TIMESTAMP ON /DB2/DB/DB2_LOGS DBPATH ON /DB2/DB/DB2_DATA"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_LOCAL_HOST $SECNAME"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_LOCAL_SVC 50002"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_REMOTE_HOST $PRINAME"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_REMOTE_SVC 50001"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_REMOTE_INST $DB2INSTANCE"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_SYNCMODE $SYNCMODE"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using LOGINDEXBUILD ON"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_TIMEOUT 60"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 update db cfg for $DB2DB using HADR_PEER_WINDOW 120"  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 start hadr on database $DB2DB as standby" >> /tmp/cfn-init.log 2>&1
+            - |
+              echo done > $STACKNAME-hadrdone && aws s3 cp $STACKNAME-hadrdone s3://$S3BUCKET/db2/$STACKNAME-hadrdone  >> /tmp/cfn-init.log 2>&1
+            - |
+              su - $DB2INSTANCE -c "db2 -v update alternate server for db $DB2DB using hostname $PRINAME port 60000"  >> /tmp/cfn-init.log 2>&1
+            - |
+              preprpnode $SECNAME $PRINAME  >> /tmp/cfn-init.log 2>&1
+            - >
+              echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "<DB2Cluster xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"db2ha.xsd\" clusterManagerName=\"TSA\" version=\"1.0\">" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  <ClusterDomain domainName=\"db2HAdomain\">" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "     <ClusterNode clusterNodeName=\"$PRINAME\"/>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "     <ClusterNode clusterNodeName=\"$SECNAME\"/>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </ClusterDomain>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  <FailoverPolicy>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "     <HADRFailover></HADRFailover>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </FailoverPolicy>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&              
+              echo "  <DB2PartitionSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "    <DB2Partition dbpartitionnum=\"0\" instanceName=\"$DB2INSTANCE\">" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "    </DB2Partition>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </DB2PartitionSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  <HADRDBSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "    <HADRDB databaseName=\"$DB2DB\" localInstance=\"$DB2INSTANCE\" remoteInstance=\"$DB2INSTANCE\" localHost=\"$SECNAME\" remoteHost=\"$PRINAME\" />" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "  </HADRDBSet>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml &&
+              echo "</DB2Cluster>" >> /DB2/DB2_INSTALL/db2haicu-hadr.xml
+            - |
+              chmod 777 /DB2/DB2_INSTALL/db2haicu-hadr.xml
+            - |
+              while ! aws s3 ls s3://$S3BUCKET/db2/$STACKNAME-tsaprepdone >/dev/null 2>&1; do echo waiting for primary preprpnode to complete; sleep 10; done
+            - |
+              su - $DB2INSTANCE -c "db2haicu -f /DB2/DB2_INSTALL/db2haicu-hadr.xml"  >> /tmp/cfn-init.log 2>&1
+            - |
+              echo done > $STACKNAME-tsadone && aws s3 cp $STACKNAME-tsadone s3://$S3BUCKET/db2/$STACKNAME-tsadone
+            - |
+              rm -rf /DB2/DB2_INSTALL
+
+#   ------------------
+#   DB2 Client Node
+#   ------------------
+
+  db2Client:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap 
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap 
+          - AWSInstanceType2Arch
+          - !Ref LinuxInstanceType
+          - Arch
+      KeyName: !Ref KeyPairName
+      InstanceType: !Ref LinuxInstanceType
+      Monitoring: true
+      IamInstanceProfile: !Ref InstanceRoleProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeleteOnTermination: true
+          DeviceIndex: 0
+          SubnetId: !Ref ClientSubnet
+          GroupSet:
+            - !Ref ClientSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Ref ClientEC2InstanceName
+      UserData: !Base64 
+        'Fn::Join':
+          - ''
+          - - |
+              #!/bin/bash -xe
+            - |
+              # Region
+            - 'AWSREGION='
+            - !Ref 'AWS::Region'
+            - |+
+
+            - |
+              # S3 bucket
+            - 'S3BUCKET='
+            - !Ref S3Bucket
+            - |+
+
+            - >
+              groupadd -g 999 db2iadm1 && 
+              groupadd -g 998 db2fsdm1 && 
+              groupadd -g 997 dasadm1 >> /tmp/cfn-init.log 2>&1
+            - >
+              useradd -u 1004 -g db2iadm1 -m -d /home/db2inst1 db2inst1 && 
+              useradd -u 1003 -g db2fsdm1 -m -d /home/db2fenc1 db2fenc1 && 
+              useradd -u 1002 -g dasadm1 -m -d /home/dasusr1 dasusr1 >> /tmp/cfn-init.log 2>&1
+            - |
+              echo "vm.swappiness=5" >> /etc/sysctl.conf
+            - |
+              mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
+            - |
+              apt-get update >> /tmp/cfn-init.log 2>&1
+            - |
+              apt-get install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+            - |
+              pip install awscli
+            - >
+              echo "PROD                          = CLIENT" > /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "FILE                          = /DB2/DB2_BINARY" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "LIC_AGREEMENT                 = ACCEPT" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "INSTANCE                      = DB2_INST" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.NAME                 = db2inst1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.TYPE                 = CLIENT" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.GROUP_NAME           = db2iadm1" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.AUTOSTART            = NO" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "DB2_INST.START_DURING_INSTALL = NO" >> /DB2/DB2_INSTALL/db2-hadr.rsp &&
+              echo "INSTALL_TYPE                  = TYPICAL" >> /DB2/DB2_INSTALL/db2-hadr.rsp
+            - |
+              aws s3 cp s3://$S3BUCKET/db2/v11.1_linuxx64_server_t.tar.gz /DB2/DB2_INSTALL/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
+            - |
+              cd /DB2/DB2_INSTALL && tar -xvf v11.1_linuxx64_server_t.tar.gz  >> /tmp/cfn-init.log 2>&1
+            - |
+              /DB2/DB2_INSTALL/server_t/db2setup -f sysreq -r /DB2/DB2_INSTALL/db2-hadr.rsp  >> /tmp/cfn-init.log 2>&1
+            - |
+              rm -rf /DB2/DB2_INSTALL
