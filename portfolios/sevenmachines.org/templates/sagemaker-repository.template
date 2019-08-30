@@ -1,0 +1,34 @@
+Description: Basic NotebookInstance test update to a different instance type
+Parameters:
+  RepositoryName:
+    Type: String
+  RepositoryUrl:
+    Type: String
+  RepositoryBranch:
+    Type: String
+    Default: master
+  User:
+    Type: String
+  Password:
+    Type: String
+    NoEcho: True 
+Resources:
+  SagemakerRepository:
+    Type: AWS::SageMaker::CodeRepository
+    Properties: 
+      CodeRepositoryName: !Ref RepositoryName
+      GitConfig: 
+        Branch: !Ref RepositoryBranch
+        RepositoryUrl: !Ref RepositoryUrl
+        SecretArn: !Ref RepositorySecret
+ 
+  RepositorySecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: !Sub sagemaker/repository/${RepositoryName}/credentials
+      SecretString: !Sub '{"username": ${User}, "password": ${Password} }'
+
+Outputs:
+  RepositoryName:
+    Value: !GetAtt SagemakerRepository.CodeRepositoryName
+

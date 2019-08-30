@@ -1,0 +1,13 @@
+name: data
+description: Data services templates
+owner: niall@sevenmachines.org
+vendor: sevenmachines.org
+products:
+- name: sagemaker-notebook
+  template: templates/sagemaker-notebook.template
+  owner: niall@sevenmachines.org
+  description: Creates a sagemaker notebook from an existing sagemaker repository
+- name: sagemaker-repository
+  template: templates/sagemaker-repository.template
+  owner: niall@sevenmachines.org
+  description: Creates a sagemaker repository from a git repository
