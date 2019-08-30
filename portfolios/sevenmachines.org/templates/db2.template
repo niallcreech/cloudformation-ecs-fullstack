@@ -405,6 +405,12 @@ Resources:
           echo "COMP                          = TSAMP" >> /DB2/DB2_INSTALL/db2-hadr.rsp
           aws s3 cp s3://$S3BUCKET/db2/v11.1_linuxx64_server_t.tar.gz /DB2/DB2_INSTALL/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
           cd /DB2/DB2_INSTALL && tar -xvf v11.1_linuxx64_server_t.tar.gz  >> /tmp/cfn-init.log 2>&1
+          # Fix SAM detection of Amazon Linux
+          SAM_DIR="/DB2/DB2_INSTALL/server_t/db2/linuxamd64/tsamp"
+          sed -i '2695i"Amazon Linux") DISTRO=AMZN; ARCH_64=1;;' $SAM_DIR/prereqSAM
+          sed -i '228iLinux_x86_64_AMZN_VERSIONS="2"' $SAM_DIR/prereqSAM
+          sed -i '2007i"Amazon Linux") DISTRO=AMZN; ARCH_64=1;;' $SAM_DIR/installSAM
+          # Do DB2 install
           /DB2/DB2_INSTALL/server_t/db2setup -f sysreq -r /DB2/DB2_INSTALL/db2-hadr.rsp  >> /tmp/cfn-init.log 2>&1
           chmod +x /DB2/DB2_BINARY/adm/db2start  >> /tmp/cfn-init.log 2>&1
           chmod +x /DB2/DB2_BINARY/adm/db2stop  >> /tmp/cfn-init.log 2>&1
@@ -533,7 +539,8 @@ Resources:
           mkdir -p /DB2/DB2_INSTALL && mkdir -p /DB2/DB2_BINARY >> /tmp/cfn-init.log 2>&1
           PKG_MANAGER=$( command -v yum || command -v apt-get )
           $PKG_MANAGER update -y >> /tmp/cfn-init.log 2>&1
-          $PKG_MANAGER install -y binutils libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
+          echo multilib_policy=all  >> yum.conf
+          $PKG_MANAGER install -y binutils.i386 libaio1 ksh python2.7 gcc g++ python-pip libstdc++5 libaio-dev
           pip install awscli
           aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-secname 
           aws s3 rm s3://$S3BUCKET/db2/$STACKNAME-priname 
@@ -555,6 +562,12 @@ Resources:
           echo "COMP                          = TSAMP" >> /DB2/DB2_INSTALL/db2-hadr.rsp
           aws s3 cp s3://$S3BUCKET/db2/v11.1_linuxx64_server_t.tar.gz /DB2/DB2_INSTALL/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
           cd /DB2/DB2_INSTALL && tar -xvf v11.1_linuxx64_server_t.tar.gz  >> /tmp/cfn-init.log 2>&1
+          # Fix SAM detection of Amazon Linux
+          SAM_DIR="/DB2/DB2_INSTALL/server_t/db2/linuxamd64/tsamp"
+          sed -i '2695i"Amazon Linux") DISTRO=AMZN; ARCH_64=1;;' $SAM_DIR/prereqSAM
+          sed -i '228iLinux_x86_64_AMZN_VERSIONS="2"' $SAM_DIR/prereqSAM
+          sed -i '2007i"Amazon Linux") DISTRO=AMZN; ARCH_64=1;;' $SAM_DIR/installSAM
+          # Do DB2 install
           /DB2/DB2_INSTALL/server_t/db2setup -f sysreq -r /DB2/DB2_INSTALL/db2-hadr.rsp  >> /tmp/cfn-init.log 2>&1
           chmod +x /DB2/DB2_BINARY/adm/db2start
           chmod +x /DB2/DB2_BINARY/adm/db2stop
@@ -667,5 +680,11 @@ Resources:
           echo "INSTALL_TYPE                  = TYPICAL" >> /DB2/DB2_INSTALL/db2-hadr.rsp
           aws s3 cp s3://$S3BUCKET/db2/v11.1_linuxx64_server_t.tar.gz /DB2/DB2_INSTALL/ --region $AWSREGION  >> /tmp/cfn-init.log 2>&1
           cd /DB2/DB2_INSTALL && tar -xvf v11.1_linuxx64_server_t.tar.gz  >> /tmp/cfn-init.log 2>&1
+          # Fix SAM detection of Amazon Linux
+          SAM_DIR="/DB2/DB2_INSTALL/server_t/db2/linuxamd64/tsamp"
+          sed -i '2695i"Amazon Linux") DISTRO=AMZN; ARCH_64=1;;' $SAM_DIR/prereqSAM
+          sed -i '228iLinux_x86_64_AMZN_VERSIONS="2"' $SAM_DIR/prereqSAM
+          sed -i '2007i"Amazon Linux") DISTRO=AMZN; ARCH_64=1;;' $SAM_DIR/installSAM
+          # Do DB2 install
           /DB2/DB2_INSTALL/server_t/db2setup -f sysreq -r /DB2/DB2_INSTALL/db2-hadr.rsp  >> /tmp/cfn-init.log 2>&1
           rm -rf /DB2/DB2_INSTALL
