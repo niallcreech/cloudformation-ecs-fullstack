@@ -19,3 +19,5 @@ products:
   template: quickstart-compliance-uk-official/templates/main.template
   owner: niall@sevenmachines.org
   description: creates an official uk compliance vpc and all related components
+principals:
+  - role/admin
