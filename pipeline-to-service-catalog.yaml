@@ -24,7 +24,16 @@ Parameters:
   BranchName:
     Description: Name of repo branch to watch.
     Type: String
+  ApiKey:
+    NoEcho: true
+    Description: The access key for github
+    Type: String
 Resources:
+  Type: AWS::SecretsManager::Secret
+  Properties:
+    Description: The Github API access key
+    Name: external/github/users/code-pipeline/key
+    SecretString: !Ref ApiKey
   ArtifactBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -130,7 +139,7 @@ Resources:
       Environment:
         Type: linuxContainer
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/python:2.7.12
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.02
         EnvironmentVariables:
           - Name: S3Bucket
             Value: !Ref ArtifactBucket
@@ -166,7 +175,7 @@ Resources:
       Environment:
         Type: linuxContainer
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/python:2.7.12
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.02
         EnvironmentVariables:
           - Name: S3Bucket
             Value: !Ref ArtifactBucket
