@@ -11,10 +11,10 @@ products:
   template: templates/db2.template
   owner: niall@sevenmachines.org
   description: Creates an IBM DB2 cluster and related components
-- name: mongodb
-  template: templates/mongodb.template
-  owner: niall@sevenmachines.org
-  description: Creates a MongoDB cluster
+#- name: mongodb
+#template: templates/mongodb.template
+#  owner: niall@sevenmachines.org
+#  description: Creates a MongoDB cluster
 #accounts:
 #- identifier: dev
 #  number: 082379909925
