@@ -12,7 +12,6 @@
 #permissions and limitations under the License.
 
 from __future__ import print_function
-import yaml
 import json
 import boto3
 import traceback
@@ -50,8 +49,6 @@ def handler(event, context):
         s3 = setup_s3_client()
         sync_service_catalog(s3, artifact_data)
         put_job_success(job_id, "Success")
-
-
     except Exception as e:
         print('Function failed due to exception.')
         print(e)
