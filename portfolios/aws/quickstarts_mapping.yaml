@@ -3,6 +3,18 @@ description: AWS quickstarts
 owner: niall@sevenmachines.org
 vendor: aws
 products:
+- name: quickstart-aws-vpc
+  template: quickstart-aws-vpc/templates/aws-vpc.template
+  owner: niall@sevenmachines.org
+  description: creates an aws standard vpc
+- name: quickstart-datalake-47lining
+  template: quickstart-datalake-47lining/templates/data-lake-master.yaml
+  owner: niall@sevenmachines.org
+  description: creates an aws data lake
+- name: quickstart-oracle-database
+  template: quickstart-oracle-database/templates/oracle-database-master.template
+  owner: niall@sevenmachines.org
+  description: creates an aws standard oracle RDS
 - name: quickstart-compliance-uk-official
   template: quickstart-compliance-uk-official/templates/main.template
   owner: niall@sevenmachines.org
