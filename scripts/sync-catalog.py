@@ -22,6 +22,7 @@ import uuid
 import os
 import datetime
 import hashlib
+import yaml
 
 code_pipeline = boto3.client('codepipeline')
 sts_client = boto3.client('sts')
@@ -618,7 +619,7 @@ def setup_s3_client():
     :return: Boto3 S3 session. Uses IAM credentials
     """
     session = Session()
-    return session.client('s3', config=botocore.client.Config(signature_version='s3v4'))
+    return session.client('s3')
 
 
 def put_job_success(job, message):

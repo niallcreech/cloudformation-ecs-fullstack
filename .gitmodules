@@ -4,3 +4,12 @@
 [submodule "external/quickstart-compliance-uk-official"]
 	path = external/quickstart-compliance-uk-official
 	url = https://github.com/aws-quickstart/quickstart-compliance-uk-official.git
+[submodule "external/quickstart-aws-vpc"]
+	path = external/quickstart-aws-vpc
+	url = https://github.com/aws-quickstart/quickstart-aws-vpc.git
+[submodule "external/quickstart-oracle-database"]
+	path = external/quickstart-oracle-database
+	url = https://github.com/aws-quickstart/quickstart-oracle-database.git
+[submodule "external/quickstart-datalake-47lining"]
+	path = external/quickstart-datalake-47lining
+	url = https://github.com/aws-quickstart/quickstart-datalake-47lining.git
