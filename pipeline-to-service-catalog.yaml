@@ -29,11 +29,12 @@ Parameters:
     Description: The access key for github
     Type: String
 Resources:
-  Type: AWS::SecretsManager::Secret
-  Properties:
-    Description: The Github API access key
-    Name: external/github/users/code-pipeline/key
-    SecretString: !Ref ApiKey
+  ApiSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: The Github API access key
+      Name: external/github/users/pipeline/key
+      SecretString: !Ref ApiKey
   ArtifactBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -139,7 +140,7 @@ Resources:
       Environment:
         Type: linuxContainer
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.02
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         EnvironmentVariables:
           - Name: S3Bucket
             Value: !Ref ArtifactBucket
@@ -175,7 +176,7 @@ Resources:
       Environment:
         Type: linuxContainer
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.02
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
         EnvironmentVariables:
           - Name: S3Bucket
             Value: !Ref ArtifactBucket
@@ -277,7 +278,7 @@ Resources:
                 Owner: !Ref RepositoryOwner
                 Repo: !Ref RepositoryName
                 Branch: !Ref BranchName
-                OAuthToken: "{{resolve:secretsmanager:external/github/users/code-pipeline/key}}"
+                OAuthToken: "{{resolve:secretsmanager:external/github/users/pipeline/key}}"
               OutputArtifacts:
                 - Name: SCCheckoutArtifact
               RunOrder: 1
