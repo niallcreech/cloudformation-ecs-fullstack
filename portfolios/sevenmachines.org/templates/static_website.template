@@ -9,6 +9,7 @@ Parameters:
   DomainName:
     Type: String
     Description: The full domain name.
+    Default: ""
   EnableHttps:
     Description: Set to enable https
     Default: true
@@ -54,6 +55,9 @@ Conditions:
     !And
      - !Equals ['', !Ref CertificateArn]
      - !Equals ['true', !Ref EnableHttps]
+  createAliases: !Not [!Equals ['', !Ref DomainName]]
+  hasDomainName:
+    !Not [!Equals ['', !Ref DomainName]]
   hasAlternativeDomainName:
     !Not [!Equals ['', !Ref AlternativeDomainName]]
   hasValidationDomain:
@@ -170,10 +174,16 @@ Resources:
                 ErrorCachingMinTTL: 30
             - !Ref AWS::NoValue  
         Aliases:
-        - !Ref 'DomainName'
         - !If
-            - hasAlternativeValidationDomain
-            - !Ref AlternativeDomainName
+            - createAliases
+            -  - !If
+                  - hasDomainName
+                  - !Ref 'DomainName'
+                  - !Ref AWS::NoValue
+               - !If
+                  - hasAlternativeValidationDomain
+                  - !Ref AlternativeDomainName
+                  - !Ref AWS::NoValue
             - !Ref AWS::NoValue
         DefaultCacheBehavior:
           AllowedMethods:
@@ -194,6 +204,7 @@ Resources:
               SslSupportMethod: sni-only
             - !Ref "AWS::NoValue"
   WebsiteDNSName:
+    Condition: hasDomainName
     Type: AWS::Route53::RecordSetGroup
     Properties:
       HostedZoneName: !Join ['', [!Ref 'HostedZoneName', '.']]
@@ -242,11 +253,14 @@ Resources:
 
 Outputs:
   SiteURL:
-    Value: !Join ['', ['https://', !Ref 'DomainName']]
+    Value:  !If
+          - createAliases
+          - !Join ['', ['https://', !Ref 'DomainName']]
+          - !Join ['', ['https://', !GetAtt WebsiteCloudfront.DomainName]]
     Description: Address of the website
   BucketName:
     Value: !Ref 'WebsiteBucket'
     Description: Name of S3 bucket to hold website content
   CloudfrontEndpoint:
-    Value: !GetAtt [WebsiteCloudfront, DomainName]
+    Value: !GetAtt WebsiteCloudfront.DomainName
     Description: Endpoint for Cloudfront distribution
